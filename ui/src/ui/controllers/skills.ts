@@ -10,6 +10,7 @@ export type SkillsState = {
   skillsBusyKey: string | null;
   skillEdits: Record<string, string>;
   skillMessages: SkillMessageMap;
+  gatewayUrl?: string;
 };
 
 export type SkillMessage = {
@@ -151,6 +152,66 @@ export async function installSkill(
       kind: "error",
       message,
     });
+  } finally {
+    state.skillsBusyKey = null;
+  }
+}
+
+export type SkillsUploadResult = {
+  ok: boolean;
+  error?: string;
+  template?: string;
+};
+
+function gatewayHttpBase(gatewayUrl: string): string {
+  return gatewayUrl.replace(/^ws/, "http");
+}
+
+export async function uploadSkill(
+  state: SkillsState,
+  name: string,
+  file: File,
+): Promise<SkillsUploadResult> {
+  const url = state.gatewayUrl ? gatewayHttpBase(state.gatewayUrl) : "";
+  if (!url) {
+    return { ok: false, error: "Gateway URL not configured" };
+  }
+  const form = new FormData();
+  form.append("name", name.trim());
+  form.append("file", file);
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/api/skills/upload`, {
+      method: "POST",
+      body: form,
+    });
+    const data = (await res.json()) as { ok?: boolean; error?: string; template?: string };
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: data.error ?? `Upload failed (${res.status})`,
+        template: data.template,
+      };
+    }
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+export async function deleteSkill(state: SkillsState, skillKey: string): Promise<void> {
+  if (!state.client || !state.connected) {
+    return;
+  }
+  state.skillsBusyKey = skillKey;
+  state.skillsError = null;
+  try {
+    await state.client.request("skills.delete", { skillKey });
+    await loadSkills(state, { clearMessages: true });
+  } catch (err) {
+    state.skillsError = getErrorMessage(err);
   } finally {
     state.skillsBusyKey = null;
   }

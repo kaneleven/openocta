@@ -9,8 +9,16 @@
   - 展示 IM ↔ Agent 的数据流。
 
 - Feishu 配置：`src/docs/channels-config-feishu.md`  
-  - 完整说明 `channels.feishu` 的配置字段与启用步骤。  
-  - 当前唯一已接入完整 Runtime（WebSocket 收消息）的通道。
+  - 完整说明 `channels.feishu` 的配置字段与启用步骤。
+
+- DingTalk 配置：`src/docs/channels-config-dingtalk.md`  
+  - 说明 `channels.dingtalk` 的配置字段与启用步骤，支持 Stream 模式。
+
+- WeWork 配置：`src/docs/channels-config-wework.md`  
+  - 说明 `channels.wework` 的配置字段与启用步骤，支持 Webhook HTTP 模式。
+
+- QQ 配置：`src/docs/channels-config-qq.md`  
+  - 说明 `channels.qq` 的配置字段与启用步骤，支持 QQ 官方 Bot WebSocket。
 
 - Telegram 配置（骨架）：`src/docs/channels-config-telegram.md`  
   - 约定 `channels.telegram` 的推荐配置结构，为后续 Runtime 实现做准备。

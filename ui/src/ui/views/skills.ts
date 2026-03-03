@@ -54,12 +54,24 @@ export type SkillsProps = {
   edits: Record<string, string>;
   busyKey: string | null;
   messages: SkillMessageMap;
+  addModalOpen: boolean;
+  uploadName: string;
+  uploadFile: File | null;
+  uploadError: string | null;
+  uploadTemplate: string | null;
+  uploadBusy: boolean;
   onFilterChange: (next: string) => void;
   onRefresh: () => void;
+  onAddClick: () => void;
+  onAddClose: () => void;
+  onUploadNameChange: (next: string) => void;
+  onUploadFileChange: (file: File | null) => void;
+  onUploadSubmit: () => void;
   onToggle: (skillKey: string, enabled: boolean) => void;
   onEdit: (skillKey: string, value: string) => void;
   onSaveKey: (skillKey: string) => void;
   onInstall: (skillKey: string, name: string, installId: string) => void;
+  onDelete: (skillKey: string) => void;
 };
 
 export function renderSkills(props: SkillsProps) {
@@ -74,15 +86,99 @@ export function renderSkills(props: SkillsProps) {
 
   return html`
     <section class="card">
-      <div class="row" style="justify-content: space-between;">
+      <div class="row" style="justify-content: space-between; align-items: center;">
         <div>
           <div class="card-title">${t("skillsTitle")}</div>
           <div class="card-sub">${t("skillsSub")}</div>
         </div>
-        <button class="btn" ?disabled=${props.loading} @click=${props.onRefresh}>
-          ${props.loading ? t("commonLoading") : t("commonRefresh")}
-        </button>
+        <div class="row" style="gap: 8px;">
+          <button class="btn primary" ?disabled=${props.loading} @click=${props.onAddClick}>
+            ${t("skillsAdd")}
+          </button>
+          <button class="btn" ?disabled=${props.loading} @click=${props.onRefresh}>
+            ${props.loading ? t("commonLoading") : t("commonRefresh")}
+          </button>
+        </div>
       </div>
+
+      ${
+        props.addModalOpen
+          ? html`
+              <div class="modal-overlay" @click=${props.onAddClose}>
+                <div class="modal card" @click=${(e: Event) => e.stopPropagation()}>
+                  <div class="card-title">${t("skillsAddSkill")}</div>
+                  <div class="field" style="margin-top: 12px;">
+                    <span>${t("skillsUploadName")}</span>
+                    <input
+                      type="text"
+                      .value=${props.uploadName}
+                      @input=${(e: Event) =>
+                        props.onUploadNameChange((e.target as HTMLInputElement).value)}
+                      placeholder=${t("skillsUploadNamePlaceholder")}
+                      pattern="[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}"
+                    />
+                  </div>
+                  <div class="field" style="margin-top: 12px;">
+                    <span>${t("skillsUploadFile")}</span>
+                    <input
+                      type="file"
+                      accept=".md,.zip"
+                      @change=${(e: Event) => {
+                        const input = e.target as HTMLInputElement;
+                        props.onUploadFileChange(input.files?.[0] ?? null);
+                      }}
+                    />
+                    <div class="muted" style="margin-top: 4px; font-size: 0.9em;">
+                      ${t("skillsUploadFileHint")}
+                    </div>
+                  </div>
+                  ${
+                    props.uploadError
+                      ? html`
+                          <div class="callout danger" style="margin-top: 12px;">
+                            ${props.uploadError}
+                          </div>
+                        `
+                      : nothing
+                  }
+                  ${
+                    props.uploadTemplate
+                      ? html`
+                          <details class="muted" style="margin-top: 12px;">
+                            <summary>Template</summary>
+                            <pre
+                              style="
+                                margin-top: 8px;
+                                padding: 12px;
+                                background: var(--bg-muted, #f5f5f5);
+                                border-radius: 6px;
+                                overflow: auto;
+                                max-height: 200px;
+                                font-size: 0.85em;
+                                white-space: pre-wrap;
+                              "
+                            >${props.uploadTemplate}</pre>
+                          </details>
+                        `
+                      : nothing
+                  }
+                  <div class="row" style="margin-top: 16px; justify-content: flex-end; gap: 8px;">
+                    <button class="btn" ?disabled=${props.uploadBusy} @click=${props.onAddClose}>
+                      ${t("commonCancel")}
+                    </button>
+                    <button
+                      class="btn primary"
+                      ?disabled=${props.uploadBusy || !props.uploadName.trim() || !props.uploadFile}
+                      @click=${props.onUploadSubmit}
+                    >
+                      ${props.uploadBusy ? t("commonLoading") : t("skillsUploadSubmit")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `
+          : nothing
+      }
 
       <div class="filters" style="margin-top: 14px;">
         <label class="field" style="flex: 1;">
@@ -196,7 +292,26 @@ function renderSkill(skill: SkillStatusEntry, props: SkillsProps) {
         }
       </div>
       <div class="list-meta">
-        <div class="row" style="justify-content: flex-end; flex-wrap: wrap;">
+        <div class="row" style="justify-content: flex-end; flex-wrap: wrap; gap: 8px;">
+          ${
+            (skill.source === "openclaw-managed" || skill.source === "openclaw-extra") &&
+            props.onDelete
+              ? html`
+                  <button
+                    class="btn"
+                    style="color: var(--danger-color, #d14343);"
+                    ?disabled=${busy}
+                    @click=${() => {
+                      if (confirm(t("skillsDeleteConfirm"))) {
+                        props.onDelete(skill.skillKey);
+                      }
+                    }}
+                  >
+                    ${t("skillsDelete")}
+                  </button>
+                `
+              : nothing
+          }
           <button
             class="btn"
             ?disabled=${busy}

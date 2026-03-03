@@ -521,6 +521,18 @@ type Strings = {
   skillsInstalled: string;
   skillsExtra: string;
   skillsOther: string;
+  skillsAdd: string;
+  skillsAddSkill: string;
+  skillsUploadName: string;
+  skillsUploadNamePlaceholder: string;
+  skillsUploadFile: string;
+  skillsUploadFileHint: string;
+  skillsUploadSingleHint: string;
+  skillsUploadZipHint: string;
+  skillsUploadSubmit: string;
+  skillsUploadSuccess: string;
+  skillsDelete: string;
+  skillsDeleteConfirm: string;
   // Nodes
   nodesTitle: string;
   nodesSub: string;
@@ -1222,6 +1234,18 @@ const EN: Strings = {
   skillsInstalled: "Installed Skills",
   skillsExtra: "Extra Skills",
   skillsOther: "Other Skills",
+  skillsAdd: "Add",
+  skillsAddSkill: "Add Skill",
+  skillsUploadName: "Skill name (English)",
+  skillsUploadNamePlaceholder: "e.g. my-skill",
+  skillsUploadFile: "File",
+  skillsUploadFileHint: "SKILL.md or .zip containing SKILL.md",
+  skillsUploadSingleHint: "Single file must be SKILL.md",
+  skillsUploadZipHint: "Zip must contain SKILL.md",
+  skillsUploadSubmit: "Upload",
+  skillsUploadSuccess: "Skill uploaded successfully",
+  skillsDelete: "Delete",
+  skillsDeleteConfirm: "Delete this skill?",
   nodesTitle: "Nodes",
   nodesSub: "Paired devices and live links.",
   nodesNoFound: "No nodes found.",
@@ -1915,6 +1939,18 @@ const ZH: Strings = {
   skillsInstalled: "已安装技能",
   skillsExtra: "额外技能",
   skillsOther: "其他技能",
+  skillsAdd: "新增",
+  skillsAddSkill: "添加技能",
+  skillsUploadName: "技能名称（英文）",
+  skillsUploadNamePlaceholder: "如 my-skill",
+  skillsUploadFile: "文件",
+  skillsUploadFileHint: "SKILL.md 或包含 SKILL.md 的 .zip",
+  skillsUploadSingleHint: "单文件必须为 SKILL.md",
+  skillsUploadZipHint: "压缩包必须包含 SKILL.md",
+  skillsUploadSubmit: "上传",
+  skillsUploadSuccess: "技能上传成功",
+  skillsDelete: "删除",
+  skillsDeleteConfirm: "确定删除此技能？",
   nodesTitle: "节点",
   nodesSub: "已配对设备与在线连接。",
   nodesNoFound: "未找到节点。",

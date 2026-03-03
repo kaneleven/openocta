@@ -4,6 +4,7 @@ package skills
 import (
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -96,7 +97,7 @@ func LoadWorkspaceEntries(workspaceDir string, opts *LoadOptions) ([]Entry, erro
 		for _, dir := range opts.Config.Skills.Load.ExtraDirs {
 			trimmed := strings.TrimSpace(dir)
 			if trimmed != "" {
-				extraDirs = append(extraDirs, resolveUserPath(trimmed, env))
+				extraDirs = append(extraDirs, ResolveUserPath(trimmed, env))
 			}
 		}
 	}
@@ -218,6 +219,7 @@ func loadSkillsFromDir(dir string, source string) ([]Entry, error) {
 }
 
 // loadSkillsFromFS loads skills from an fs.FS (e.g. embedded). Stores content in EmbeddedContent.
+// Uses path (not filepath) for fs.FS operations - fs.FS requires forward slashes on all platforms including Windows.
 func loadSkillsFromFS(fsys fs.FS, basePath string, source string) ([]Entry, error) {
 	entries, err := fs.ReadDir(fsys, basePath)
 	if err != nil {
@@ -229,9 +231,9 @@ func loadSkillsFromFS(fsys fs.FS, basePath string, source string) ([]Entry, erro
 		if entry.IsDir() {
 			skillDir := entry.Name()
 			if basePath != "." {
-				skillDir = filepath.Join(basePath, skillDir)
+				skillDir = path.Join(basePath, skillDir)
 			}
-			skillFile := filepath.Join(skillDir, "SKILL.md")
+			skillFile := path.Join(skillDir, "SKILL.md")
 			if _, err := fs.Stat(fsys, skillFile); err == nil {
 				skill, err := loadSkillFromFSFile(fsys, skillFile, source)
 				if err == nil && skill.Name != "" {
@@ -241,7 +243,7 @@ func loadSkillsFromFS(fsys fs.FS, basePath string, source string) ([]Entry, erro
 		} else if strings.HasSuffix(entry.Name(), ".md") {
 			skillFile := entry.Name()
 			if basePath != "." {
-				skillFile = filepath.Join(basePath, skillFile)
+				skillFile = path.Join(basePath, skillFile)
 			}
 			skill, err := loadSkillFromFSFile(fsys, skillFile, source)
 			if err == nil && skill.Name != "" {
@@ -253,16 +255,17 @@ func loadSkillsFromFS(fsys fs.FS, basePath string, source string) ([]Entry, erro
 }
 
 // loadSkillFromFSFile loads a skill from a file within fs.FS, storing content in EmbeddedContent.
+// skillPath uses forward slashes (fs.FS convention, works on all platforms including Windows).
 func loadSkillFromFSFile(fsys fs.FS, skillPath string, source string) (Entry, error) {
 	data, err := fs.ReadFile(fsys, skillPath)
 	if err != nil {
 		return Entry{}, err
 	}
 
-	dir := filepath.Dir(skillPath)
-	name := filepath.Base(dir)
+	dir := path.Dir(skillPath)
+	name := path.Base(dir)
 	if name == "." || name == "/" {
-		name = strings.TrimSuffix(filepath.Base(skillPath), ".md")
+		name = strings.TrimSuffix(path.Base(skillPath), ".md")
 	}
 
 	frontmatter := parseFrontmatter(string(data))
@@ -451,8 +454,8 @@ func looksLikeSkillsDir(dir string) bool {
 	return false
 }
 
-// resolveUserPath resolves a user path (expands ~ and resolves to absolute).
-func resolveUserPath(input string, env func(string) string) string {
+// ResolveUserPath resolves a user path (expands ~ and resolves to absolute).
+func ResolveUserPath(input string, env func(string) string) string {
 	trimmed := strings.TrimSpace(input)
 	if trimmed == "" {
 		return trimmed

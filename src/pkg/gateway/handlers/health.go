@@ -130,6 +130,7 @@ func NewRegistry(ctx *Context) Registry {
 		"skills.bins":               SkillsBinsHandler,
 		"skills.install":            SkillsInstallHandler,
 		"skills.update":             SkillsUpdateHandler,
+		"skills.delete":             SkillsDeleteHandler,
 		"update.run":                UpdateRunHandler,
 		"voicewake.get":             VoicewakeGetHandler,
 		"voicewake.set":             VoicewakeSetHandler,

@@ -551,8 +551,8 @@ func resolveRuntimePlatform() string {
 	return runtime.GOOS
 }
 
-// resolveManagedSkillsDir resolves the managed skills directory path.
-func resolveManagedSkillsDir(env func(string) string) string {
+// ResolveManagedSkillsDir resolves the managed skills directory path (~/.openocta/skills).
+func ResolveManagedSkillsDir(env func(string) string) string {
 	stateDir := paths.ResolveStateDir(env)
 	return filepath.Join(stateDir, "skills")
 }
@@ -926,7 +926,7 @@ func buildSkillStatus(entry SkillEntry, cfg *config.OpenOctaConfig, preferBrew b
 
 // buildWorkspaceSkillStatus builds a skill status report for a workspace.
 func buildWorkspaceSkillStatus(workspaceDir string, cfg *config.OpenOctaConfig, env func(string) string) SkillStatusReport {
-	managedSkillsDir := resolveManagedSkillsDir(env)
+	managedSkillsDir := ResolveManagedSkillsDir(env)
 	entries := loadWorkspaceSkillEntries(workspaceDir, cfg)
 
 	preferBrew, nodeManager := resolveSkillsInstallPreferences(cfg)
@@ -1175,5 +1175,161 @@ func SkillsUpdateHandler(opts HandlerOpts) error {
 	}
 
 	opts.Respond(true, result, nil, nil)
+	return nil
+}
+
+// SkillsDeleteParams holds parameters for skills.delete.
+type SkillsDeleteParams struct {
+	SkillKey string
+}
+
+// parseSkillsDeleteParams parses and validates skills.delete params.
+func parseSkillsDeleteParams(params map[string]interface{}) (*SkillsDeleteParams, error) {
+	p := &SkillsDeleteParams{}
+	skillKey, ok := params["skillKey"].(string)
+	if !ok || strings.TrimSpace(skillKey) == "" {
+		return nil, fmt.Errorf("skillKey is required")
+	}
+	p.SkillKey = strings.TrimSpace(skillKey)
+	return p, nil
+}
+
+// SkillsDeleteHandler handles "skills.delete". Only allows deleting skills with source
+// openclaw-managed or openclaw-extra.
+func SkillsDeleteHandler(opts HandlerOpts) error {
+	params, err := parseSkillsDeleteParams(opts.Params)
+	if err != nil {
+		opts.Respond(false, nil, &protocol.ErrorShape{
+			Code:    protocol.ErrCodeInvalidRequest,
+			Message: fmt.Sprintf("invalid skills.delete params: %v", err),
+		}, nil)
+		return nil
+	}
+
+	var cfg *config.OpenOctaConfig
+	if opts.Context != nil && opts.Context.Config != nil {
+		cfg = opts.Context.Config
+	} else {
+		env := func(k string) string { return os.Getenv(k) }
+		loaded, err := config.Load(env)
+		if err != nil {
+			opts.Respond(false, nil, &protocol.ErrorShape{
+				Code:    protocol.ErrCodeInternal,
+				Message: "failed to load config: " + err.Error(),
+			}, nil)
+			return nil
+		}
+		cfg = loaded
+	}
+
+	env := func(k string) string { return os.Getenv(k) }
+	workspaceDir := agent.ResolveAgentWorkspaceDir(cfg, resolveDefaultAgentID(cfg), env)
+	entries := loadWorkspaceSkillEntries(workspaceDir, cfg)
+
+	var targetEntry *SkillEntry
+	for i := range entries {
+		e := &entries[i]
+		skillKey := e.Name
+		if e.Metadata != nil && e.Metadata.SkillKey != "" {
+			skillKey = e.Metadata.SkillKey
+		}
+		if skillKey == params.SkillKey {
+			targetEntry = e
+			break
+		}
+	}
+
+	if targetEntry == nil {
+		opts.Respond(false, nil, &protocol.ErrorShape{
+			Code:    protocol.ErrCodeInvalidRequest,
+			Message: fmt.Sprintf("skill not found: %s", params.SkillKey),
+		}, nil)
+		return nil
+	}
+
+	source := targetEntry.Source
+	if source != "openclaw-managed" && source != "openclaw-extra" {
+		opts.Respond(false, nil, &protocol.ErrorShape{
+			Code:    protocol.ErrCodeInvalidRequest,
+			Message: fmt.Sprintf("cannot delete skill with source %s (only openclaw-managed and openclaw-extra are allowed)", source),
+		}, nil)
+		return nil
+	}
+
+	baseDir, err := filepath.Abs(targetEntry.BaseDir)
+	if err != nil {
+		opts.Respond(false, nil, &protocol.ErrorShape{
+			Code:    protocol.ErrCodeInternal,
+			Message: "invalid baseDir: " + err.Error(),
+		}, nil)
+		return nil
+	}
+
+	// isSubdirOf checks if child is under parent (Windows-compatible: uses filepath.Rel).
+	// On Windows, HasPrefix can fail with different drive letters or casing; Rel is reliable.
+	isSubdirOf := func(parent, child string) bool {
+		if parent == "" || child == "" {
+			return false
+		}
+		rel, err := filepath.Rel(parent, child)
+		if err != nil {
+			return false
+		}
+		rel = filepath.Clean(rel)
+		return rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+	}
+
+	managedDir, _ := filepath.Abs(ResolveManagedSkillsDir(env))
+	var allowed bool
+	if source == "openclaw-managed" {
+		allowed = isSubdirOf(managedDir, baseDir)
+	} else {
+		// openclaw-extra: check baseDir is under one of extraDirs
+		if cfg != nil && cfg.Skills != nil && cfg.Skills.Load != nil {
+			for _, dir := range cfg.Skills.Load.ExtraDirs {
+				trimmed := strings.TrimSpace(dir)
+				if trimmed == "" {
+					continue
+				}
+				absExtra := agentSkills.ResolveUserPath(trimmed, env)
+				absExtra, _ = filepath.Abs(absExtra)
+				if isSubdirOf(absExtra, baseDir) {
+					allowed = true
+					break
+				}
+			}
+		}
+	}
+
+	if !allowed {
+		opts.Respond(false, nil, &protocol.ErrorShape{
+			Code:    protocol.ErrCodeInvalidRequest,
+			Message: "skill directory is not in an allowed location",
+		}, nil)
+		return nil
+	}
+
+	// Verify SKILL.md exists (safety check)
+	skillFile := filepath.Join(baseDir, "SKILL.md")
+	if _, err := os.Stat(skillFile); err != nil {
+		opts.Respond(false, nil, &protocol.ErrorShape{
+			Code:    protocol.ErrCodeInvalidRequest,
+			Message: "SKILL.md not found in skill directory",
+		}, nil)
+		return nil
+	}
+
+	if err := os.RemoveAll(baseDir); err != nil {
+		opts.Respond(false, nil, &protocol.ErrorShape{
+			Code:    protocol.ErrCodeInternal,
+			Message: "failed to delete skill: " + err.Error(),
+		}, nil)
+		return nil
+	}
+
+	opts.Respond(true, map[string]interface{}{
+		"ok":       true,
+		"skillKey": params.SkillKey,
+	}, nil, nil)
 	return nil
 }

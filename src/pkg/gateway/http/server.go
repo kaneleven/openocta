@@ -344,6 +344,7 @@ func (s *Server) registerRoutes() {
 	s.mux.Handle("GET /", http.HandlerFunc(s.handleDist))
 	s.mux.HandleFunc("GET /health", s.handleHealth)
 	s.mux.HandleFunc("GET /api/health", s.handleHealth)
+	s.mux.HandleFunc("POST /api/skills/upload", s.handleSkillsUpload)
 	//s.mux.HandleFunc("/api/", s.handleAPICatchAll)
 	//s.mux.HandleFunc("POST /v1/chat/completions", s.handleNotImplemented)
 	//s.mux.HandleFunc("POST /v1/responses", s.handleNotImplemented)

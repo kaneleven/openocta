@@ -196,6 +196,12 @@ export type AppViewState = {
   skillEdits: Record<string, string>;
   skillMessages: Record<string, SkillMessage>;
   skillsBusyKey: string | null;
+  skillsAddModalOpen: boolean;
+  skillsUploadName: string;
+  skillsUploadFile: File | null;
+  skillsUploadError: string | null;
+  skillsUploadTemplate: string | null;
+  skillsUploadBusy: boolean;
   debugLoading: boolean;
   debugStatus: StatusSummary | null;
   debugHealth: HealthSnapshot | null;

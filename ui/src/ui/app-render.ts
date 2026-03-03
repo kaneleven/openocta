@@ -44,11 +44,13 @@ import { loadNodes } from "./controllers/nodes.ts";
 import { loadPresence } from "./controllers/presence.ts";
 import { deleteSession, loadSessions, patchSession } from "./controllers/sessions.ts";
 import {
+  deleteSkill,
   installSkill,
   loadSkills,
   saveSkillApiKey,
   updateSkillEdit,
   updateSkillEnabled,
+  uploadSkill,
 } from "./controllers/skills.ts";
 import { loadUsage, loadSessionTimeSeries, loadSessionLogs } from "./controllers/usage.ts";
 import { icons } from "./icons.ts";
@@ -962,13 +964,55 @@ export function renderApp(state: AppViewState) {
                 edits: state.skillEdits,
                 messages: state.skillMessages,
                 busyKey: state.skillsBusyKey,
+                addModalOpen: state.skillsAddModalOpen,
+                uploadName: state.skillsUploadName,
+                uploadFile: state.skillsUploadFile,
+                uploadError: state.skillsUploadError,
+                uploadTemplate: state.skillsUploadTemplate,
+                uploadBusy: state.skillsUploadBusy,
                 onFilterChange: (next) => (state.skillsFilter = next),
                 onRefresh: () => loadSkills(state, { clearMessages: true }),
+                onAddClick: () => {
+                  state.skillsAddModalOpen = true;
+                  state.skillsUploadName = "";
+                  state.skillsUploadFile = null;
+                  state.skillsUploadError = null;
+                  state.skillsUploadTemplate = null;
+                },
+                onAddClose: () => {
+                  state.skillsAddModalOpen = false;
+                  state.skillsUploadError = null;
+                  state.skillsUploadTemplate = null;
+                },
+                onUploadNameChange: (next) => (state.skillsUploadName = next),
+                onUploadFileChange: (file) => (state.skillsUploadFile = file),
+                onUploadSubmit: async () => {
+                  if (!state.skillsUploadName.trim() || !state.skillsUploadFile) return;
+                  state.skillsUploadBusy = true;
+                  state.skillsUploadError = null;
+                  state.skillsUploadTemplate = null;
+                  const result = await uploadSkill(
+                    { ...state, gatewayUrl: state.settings.gatewayUrl },
+                    state.skillsUploadName.trim(),
+                    state.skillsUploadFile,
+                  );
+                  state.skillsUploadBusy = false;
+                  if (result.ok) {
+                    state.skillsAddModalOpen = false;
+                    state.skillsUploadName = "";
+                    state.skillsUploadFile = null;
+                    loadSkills(state, { clearMessages: true });
+                  } else {
+                    state.skillsUploadError = result.error ?? "Upload failed";
+                    state.skillsUploadTemplate = result.template ?? null;
+                  }
+                },
                 onToggle: (key, enabled) => updateSkillEnabled(state, key, enabled),
                 onEdit: (key, value) => updateSkillEdit(state, key, value),
                 onSaveKey: (key) => saveSkillApiKey(state, key),
                 onInstall: (skillKey, name, installId) =>
                   installSkill(state, skillKey, name, installId),
+                onDelete: (skillKey) => deleteSkill(state, skillKey),
               })
             : nothing
         }
