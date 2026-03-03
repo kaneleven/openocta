@@ -9,6 +9,7 @@ project_name: openocta
 before:
   hooks:
     - cp src/config-schema.json src/openocta.json.example src/.env src/embed/
+    - cp -r src/skills src/embed/
     - make ui
     - ls src/embed/
     - cd src && go mod download
@@ -44,6 +45,8 @@ archives:
       - none*
       - src: src/docs/*
         dst: docs
+      - src: deploy/dist-README.md
+        dst: README.md
 
   # 独立说明文档压缩包，输出到 dist 目录
   - id: docs
@@ -68,6 +71,8 @@ nfpms:
     contents:
       - src: deploy/openocta.service
         dst: /lib/systemd/system/openocta.service
+      - src: deploy/dist-README.md
+        dst: /usr/share/doc/openocta/README.md
     scripts:
       postinstall: deploy/scripts/postinstall.sh
       postremove: deploy/scripts/postremove.sh

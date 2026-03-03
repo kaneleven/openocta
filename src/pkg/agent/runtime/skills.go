@@ -57,6 +57,7 @@ func entriesToSkillRegistrations(entries []agentSkills.Entry) []api.SkillRegistr
 				disableAuto = true
 			}
 		}
+		embeddedContent := e.EmbeddedContent
 		regs = append(regs, api.SkillRegistration{
 			Definition: sdkSkills.Definition{
 				Name:                  name,
@@ -66,6 +67,9 @@ func entriesToSkillRegistrations(entries []agentSkills.Entry) []api.SkillRegistr
 				DisableAutoActivation: disableAuto,
 			},
 			Handler: sdkSkills.HandlerFunc(func(ctx context.Context, _ sdkSkills.ActivationContext) (sdkSkills.Result, error) {
+				if len(embeddedContent) > 0 {
+					return sdkSkills.Result{Output: string(embeddedContent)}, nil
+				}
 				data, err := os.ReadFile(filePath)
 				if err != nil {
 					return sdkSkills.Result{}, err

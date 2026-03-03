@@ -7,9 +7,10 @@
 ui:
 	cd ui && npm install && npm run build
 
-# 复制 config-schema、openocta.json.example、.env 到 embed 目录
+# 复制 config-schema、openocta.json.example、.env、skills 到 embed 目录
 embed: ui
 	cp src/config-schema.json src/openocta.json.example src/.env src/embed/
+	cp -r src/skills src/embed/
 
 # 构建 Go 二进制（需先执行 embed）
 go: embed
@@ -20,7 +21,7 @@ build: go
 
 # 清理
 clean:
-	rm -rf dist src/embed/frontend src/embed/config-schema.json src/embed/openocta.json.example openocta openocta.exe
+	rm -rf dist src/embed/frontend src/embed/config-schema.json src/embed/openocta.json.example src/embed/skills openocta openocta.exe
 
 # GoReleaser 快照构建（不发布）
 snapshot:

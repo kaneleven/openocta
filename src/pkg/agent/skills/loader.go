@@ -2,22 +2,25 @@
 package skills
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/openocta/openocta/embed"
 	"github.com/openocta/openocta/pkg/config"
 	"github.com/openocta/openocta/pkg/paths"
 )
 
 // Entry represents a loaded skill entry.
 type Entry struct {
-	Name        string
-	Source      string
-	FilePath    string
-	BaseDir     string
-	Metadata    *Metadata
-	Frontmatter map[string]string
+	Name            string
+	Source          string
+	FilePath        string
+	BaseDir         string
+	Metadata        *Metadata
+	Frontmatter     map[string]string
+	EmbeddedContent []byte // When non-nil, skill content is embedded (e.g. from binary); Handler should use this instead of reading FilePath.
 }
 
 // Metadata holds skill metadata parsed from frontmatter.
@@ -63,12 +66,13 @@ type LoadOptions struct {
 
 // LoadWorkspaceEntries loads skill entries from a workspace directory.
 // Skills are loaded from multiple locations with the following precedence (lowest to highest):
-// 1. Extra directories (from config.skills.load.extraDirs) - lowest priority
-// 2. Bundled skills (built-in: default ./skills or OPENCLAW_BUNDLED_SKILLS_DIR) - low priority
-// 3. Managed skills (~/.openclaw/skills) - medium priority
-// 4. Workspace skills (<workspace>/skills) - highest priority
+// 1. Embedded skills (built into binary via embed) - lowest priority
+// 2. Extra directories (from config.skills.load.extraDirs)
+// 3. Bundled skills (built-in: default ./skills or OPENCLAW_BUNDLED_SKILLS_DIR)
+// 4. Managed skills (~/.openclaw/skills)
+// 5. Workspace skills (<workspace>/skills) - highest priority
 //
-// Name conflict resolution: workspace (highest) > managed > built-in (lowest).
+// Name conflict resolution: workspace (highest) > managed > bundled > extra > embedded (lowest).
 func LoadWorkspaceEntries(workspaceDir string, opts *LoadOptions) ([]Entry, error) {
 	env := func(k string) string { return os.Getenv(k) }
 
@@ -103,13 +107,24 @@ func LoadWorkspaceEntries(workspaceDir string, opts *LoadOptions) ([]Entry, erro
 
 	// Load skills from each directory with precedence
 	// Priority order (lowest to highest):
-	// 1. Extra directories (from config.skills.load.extraDirs) - lowest
-	// 2. Bundled skills (built-in, shipped with install) - low
-	// 3. Managed skills (~/.openclaw/skills) - medium
-	// 4. Workspace skills (<workspace>/skills) - highest
+	// 1. Embedded skills (built into binary) - lowest
+	// 2. Extra directories (from config.skills.load.extraDirs)
+	// 3. Bundled skills (built-in, shipped with install)
+	// 4. Managed skills (~/.openclaw/skills)
+	// 5. Workspace skills (<workspace>/skills) - highest
 	merged := make(map[string]Entry)
 
-	// 1. Extra directories (lowest precedence)
+	// 1. Embedded skills (lowest precedence)
+	if skillsFS, err := embed.SkillsFS(); err == nil {
+		skills, _ := loadSkillsFromFS(skillsFS, ".", "openclaw-embedded")
+		for _, skill := range skills {
+			if skill.Name != "" {
+				merged[skill.Name] = skill
+			}
+		}
+	}
+
+	// 2. Extra directories
 	for _, dir := range extraDirs {
 		skills, _ := loadSkillsFromDir(dir, "openclaw-extra")
 		for _, skill := range skills {
@@ -119,7 +134,7 @@ func LoadWorkspaceEntries(workspaceDir string, opts *LoadOptions) ([]Entry, erro
 		}
 	}
 
-	// 2. Bundled skills (built-in, shipped with install) - lowest built-in priority
+	// 3. Bundled skills (built-in, shipped with install)
 	if bundledSkillsDir != "" {
 		skills, _ := loadSkillsFromDir(bundledSkillsDir, "openclaw-bundled")
 		for _, skill := range skills {
@@ -129,7 +144,7 @@ func LoadWorkspaceEntries(workspaceDir string, opts *LoadOptions) ([]Entry, erro
 		}
 	}
 
-	// 3. Managed skills (~/.openclaw/skills) - medium priority
+	// 4. Managed skills (~/.openclaw/skills)
 	skills, _ := loadSkillsFromDir(managedSkillsDir, "openclaw-managed")
 	for _, skill := range skills {
 		if skill.Name != "" {
@@ -137,7 +152,7 @@ func LoadWorkspaceEntries(workspaceDir string, opts *LoadOptions) ([]Entry, erro
 		}
 	}
 
-	// 4. Workspace skills (<workspace>/skills) - highest precedence
+	// 5. Workspace skills (<workspace>/skills) - highest precedence
 	skills, _ = loadSkillsFromDir(workspaceSkillsDir, "openclaw-workspace")
 	for _, skill := range skills {
 		if skill.Name != "" {
@@ -200,6 +215,72 @@ func loadSkillsFromDir(dir string, source string) ([]Entry, error) {
 	}
 
 	return skills, nil
+}
+
+// loadSkillsFromFS loads skills from an fs.FS (e.g. embedded). Stores content in EmbeddedContent.
+func loadSkillsFromFS(fsys fs.FS, basePath string, source string) ([]Entry, error) {
+	entries, err := fs.ReadDir(fsys, basePath)
+	if err != nil {
+		return []Entry{}, nil
+	}
+
+	var skills []Entry
+	for _, entry := range entries {
+		if entry.IsDir() {
+			skillDir := entry.Name()
+			if basePath != "." {
+				skillDir = filepath.Join(basePath, skillDir)
+			}
+			skillFile := filepath.Join(skillDir, "SKILL.md")
+			if _, err := fs.Stat(fsys, skillFile); err == nil {
+				skill, err := loadSkillFromFSFile(fsys, skillFile, source)
+				if err == nil && skill.Name != "" {
+					skills = append(skills, skill)
+				}
+			}
+		} else if strings.HasSuffix(entry.Name(), ".md") {
+			skillFile := entry.Name()
+			if basePath != "." {
+				skillFile = filepath.Join(basePath, skillFile)
+			}
+			skill, err := loadSkillFromFSFile(fsys, skillFile, source)
+			if err == nil && skill.Name != "" {
+				skills = append(skills, skill)
+			}
+		}
+	}
+	return skills, nil
+}
+
+// loadSkillFromFSFile loads a skill from a file within fs.FS, storing content in EmbeddedContent.
+func loadSkillFromFSFile(fsys fs.FS, skillPath string, source string) (Entry, error) {
+	data, err := fs.ReadFile(fsys, skillPath)
+	if err != nil {
+		return Entry{}, err
+	}
+
+	dir := filepath.Dir(skillPath)
+	name := filepath.Base(dir)
+	if name == "." || name == "/" {
+		name = strings.TrimSuffix(filepath.Base(skillPath), ".md")
+	}
+
+	frontmatter := parseFrontmatter(string(data))
+	if nameFromFM, ok := frontmatter["name"]; ok && nameFromFM != "" {
+		name = nameFromFM
+	}
+
+	metadata := parseMetadata(frontmatter)
+
+	return Entry{
+		Name:            name,
+		Source:          source,
+		FilePath:        skillPath,
+		BaseDir:         dir,
+		Metadata:        metadata,
+		Frontmatter:     frontmatter,
+		EmbeddedContent: data,
+	}, nil
 }
 
 // loadSkillFromDir loads a skill from a directory containing SKILL.md.

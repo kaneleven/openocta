@@ -10,9 +10,9 @@ import (
 	"strings"
 )
 
-// Assets embeds frontend, config-schema, openocta.json.example and .env (copied by build script).
+// Assets embeds frontend, config-schema, openocta.json.example, .env and skills (copied by build script).
 //
-//go:embed frontend config-schema.json openocta.json.example .env
+//go:embed frontend config-schema.json openocta.json.example .env skills
 var assets embed.FS
 
 func init() {
@@ -62,4 +62,10 @@ func ConfigSchemaJSON() ([]byte, error) {
 // ConfigExampleJSON returns the embedded openocta.json.example for initializing new configs.
 func ConfigExampleJSON() ([]byte, error) {
 	return fs.ReadFile(assets, "openocta.json.example")
+}
+
+// SkillsFS returns the embedded skills filesystem for loading built-in skills.
+// Returns nil if skills directory was not embedded (e.g. build without copy step).
+func SkillsFS() (fs.FS, error) {
+	return fs.Sub(assets, "skills")
 }
