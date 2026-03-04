@@ -102,5 +102,113 @@
    - 配置至少一个 `agent` 和一个 `channel`（例如 WhatsApp / Telegram / Slack 等）
 3. 重启或重新运行 `openocta gateway run` 后生效。
 
+## 大模型快速配置
+
+这里以阿里云百炼模型为例，配置文件如下：
+```shell
+{
+  "meta": {
+    "lastTouchedVersion": "2026.2.9",
+    "lastTouchedAt": "2026-02-11T09:19:35.523Z"
+  },
+  "auth": {
+    "profiles": {
+      "qwen-portal:default": {
+        "provider": "qwen-portal",
+        "mode": "oauth"
+      }
+    }
+  },
+  "skills": {
+    "entries": {
+      "prometheus": {
+        "enabled": true
+      }
+    }
+  },
+  "plugins": {
+    "entries": {
+      "feishu": {
+        "enabled": true
+      },
+      "qwen-portal-auth": {
+        "enabled": true
+      }
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "bailian": {
+        "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "apiKey": "xxxx",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "qwen3.5-plus",
+            "name": "qwen3.5-plus",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 262144,
+            "maxTokens": 65536
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "bailian/qwen3.5-plus"
+      },
+      "maxConcurrent": 4,
+      "subagents": {
+        "maxConcurrent": 8
+      }
+    }
+  },
+  "messages": {
+    "ackReactionScope": "group-mentions"
+  },
+  "commands": {
+    "native": true,
+    "nativeSkills": true,
+    "bash": true
+  },
+  "channels": {
+  },
+  "hooks": {
+    "enabled": true,
+    "path": "/hooks",
+    "token": "9fbe5742732ad7762201408cf22a97c559efc8106e616318"
+  },
+  "gateway": {
+    "port": 18900,
+    "mode": "local",
+    "bind": "loopback",
+    "auth": {
+      "mode": "token",
+      "token": "edc146993b5ae0b1544c3137cc888f94436cf11e1952cff6"
+    },
+    "tailscale": {
+      "mode": "off",
+      "resetOnExit": false
+    }
+  }
+}
+```
+
+访问 `http://127.0.0.1:18900`，复制配置文件到配置框中，保存即可
+<img src=".">
+
+
 更多细节请阅读归档中的 `docs/` 文档或访问在线文档站点。
 

@@ -10,7 +10,8 @@ import (
 )
 
 // SessionIDFromSessionKey derives a session ID from a session key when no store is available.
-// Session key formats: "agent:main:sessionId", a single safe ID, or "main". Empty key returns "main".
+// Session key formats: "agent:main:sessionId", "agent:main:employee:xxx:run:uuid", a single safe ID, or "main".
+// The third part may contain colons (e.g. employee:sre:run:uuid); it is sanitized to match SafeSessionIDRe.
 // Used as fallback when sessions.json does not contain an entry for the key.
 func SessionIDFromSessionKey(sessionKey string) string {
 	key := strings.TrimSpace(strings.ToLower(sessionKey))
@@ -19,7 +20,7 @@ func SessionIDFromSessionKey(sessionKey string) string {
 	}
 	parts := strings.SplitN(key, ":", 3)
 	if len(parts) >= 3 {
-		return parts[2]
+		return session.SanitizeForSessionID(parts[2])
 	}
 	if len(parts) == 1 && session.SafeSessionIDRe.MatchString(parts[0]) {
 		return parts[0]

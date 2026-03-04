@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/openocta/openocta/embed"
+	"github.com/openocta/openocta/pkg/paths"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -16,12 +18,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/openocta/openocta/pkg/agent"
 	"github.com/openocta/openocta/pkg/agent/runtime"
+	agentSkills "github.com/openocta/openocta/pkg/agent/skills"
 	"github.com/openocta/openocta/pkg/agent/tools"
 	"github.com/openocta/openocta/pkg/channels"
 	"github.com/openocta/openocta/pkg/config"
+	"github.com/openocta/openocta/pkg/employees"
 	"github.com/openocta/openocta/pkg/gateway/protocol"
 	"github.com/openocta/openocta/pkg/logging"
-	"github.com/openocta/openocta/pkg/paths"
+	"github.com/openocta/openocta/pkg/mcp"
 	"github.com/openocta/openocta/pkg/session"
 )
 
@@ -329,9 +333,17 @@ func broadcastAgentEvent(ctx *Context, runId string, sessionKey string, stream s
 	}
 }
 
-// buildSkillsSnapshotForSession loads skills for the workspace and returns a snapshot for session store.
-// Returns nil on error or when no skills. Snapshot shape matches SessionEntry.skillsSnapshot (prompt, skills, resolvedSkills, version).
-func buildSkillsSnapshotForSession(projectRoot string, cfg *config.OpenOctaConfig) interface{} {
+// buildSkillsSnapshotForSession loads skills for the workspace and returns a snapshot for session store。
+// 对于普通会话，直接基于 workspace 构建；对于数字员工会话（employee- 前缀），会优先加载该员工专属 skills。
+// 返回值形状与 SessionEntry.skillsSnapshot 一致（prompt, skills, resolvedSkills, version）。
+// Returns nil on error or when no skills.
+func buildSkillsSnapshotForSession(projectRoot string, cfg *config.OpenOctaConfig, sessionKey string) interface{} {
+	if employeeID := parseEmployeeIDFromSessionKey(sessionKey); employeeID != "" {
+		if snap := buildSkillsSnapshotForEmployee(projectRoot, cfg, employeeID); snap != nil {
+			return snap
+		}
+	}
+
 	entries, err := runtime.LoadSkillsForWorkspace(projectRoot, cfg)
 	if err != nil || len(entries) == 0 {
 		return nil
@@ -371,6 +383,178 @@ func buildSkillsSnapshotForSession(projectRoot string, cfg *config.OpenOctaConfi
 		"resolvedSkills": resolvedList,
 		"version":        0,
 	}
+}
+
+// buildSkillsSnapshotForEmployee 针对数字员工会话构建 skills 快照：
+// 1) embed/agents_skills/<employeeID> 下的内置 skills
+// 2) ~/.openocta/employees/<employeeID>/skills 下的用户自建 skills
+// 3) manifest.skillIds 中引用的全局 skills（基于 workspace 加载并按名称过滤）
+func buildSkillsSnapshotForEmployee(projectRoot string, cfg *config.OpenOctaConfig, employeeID string) interface{} {
+	env := func(k string) string { return os.Getenv(k) }
+
+	// 基础：workspace skills（供 manifest.skillIds 过滤）
+	baseEntries, _ := runtime.LoadSkillsForWorkspace(projectRoot, cfg)
+	merged := make(map[string]agentSkills.Entry)
+	for _, e := range baseEntries {
+		if e.Name != "" {
+			merged[e.Name] = e
+		}
+	}
+
+	// 员工 manifest：若不存在则只依赖内置目录。
+	m, _ := employees.LoadManifest(employeeID, env)
+
+	// 1) embed/agents_skills/<employeeID>
+	if fsys, err := embed.AgentsSkillsFS(); err == nil {
+		if entries, err := agentSkills.LoadEntriesFromFS(fsys, employeeID, "employee-embedded"); err == nil {
+			for _, e := range entries {
+				if e.Name != "" {
+					merged[e.Name] = e
+				}
+			}
+		}
+	}
+
+	// 2) ~/.openocta/employees/<employeeID>/skills（旧路径，保留兼容）
+	employeesRoot := employees.ResolveEmployeesDir(env)
+	legacySkillsDir := filepath.Join(employeesRoot, employeeID, "skills")
+	if entries, err := agentSkills.LoadEntriesFromDir(legacySkillsDir, "employee-managed"); err == nil {
+		for _, e := range entries {
+			if e.Name != "" {
+				merged[e.Name] = e
+			}
+		}
+	}
+
+	// 3) ~/.openocta/employee_skills/<employeeID>（新路径，上传专属技能）
+	stateDir := paths.ResolveStateDir(env)
+	employeeSkillsDir := filepath.Join(stateDir, "employee_skills", employeeID)
+	if entries, err := agentSkills.LoadEntriesFromDir(employeeSkillsDir, "employee-managed"); err == nil {
+		for _, e := range entries {
+			if e.Name != "" {
+				merged[e.Name] = e
+			}
+		}
+	}
+
+	// 4) manifest.skillIds 过滤：仅保留指定名称的 workspace skills（若 manifest 存在且有 skillIds）。
+	if m != nil && len(m.SkillIDs) > 0 {
+		allowed := make(map[string]struct{}, len(m.SkillIDs))
+		for _, id := range m.SkillIDs {
+			if id = strings.TrimSpace(id); id != "" {
+				allowed[id] = struct{}{}
+			}
+		}
+		if len(allowed) > 0 {
+			for name, e := range merged {
+				if _, ok := allowed[name]; !ok && e.Source != "employee-embedded" && e.Source != "employee-managed" {
+					delete(merged, name)
+				}
+			}
+		}
+	}
+
+	if len(merged) == 0 {
+		return nil
+	}
+
+	entries := make([]agentSkills.Entry, 0, len(merged))
+	for _, e := range merged {
+		entries = append(entries, e)
+	}
+
+	prompt := runtime.BuildSkillsPrompt(entries, cfg)
+	skillsList := make([]map[string]interface{}, 0, len(entries))
+	resolvedList := make([]map[string]interface{}, 0, len(entries))
+	for _, e := range entries {
+		skillsList = append(skillsList, map[string]interface{}{"name": e.Name})
+		desc := e.Name
+		if e.Frontmatter != nil {
+			if d := strings.TrimSpace(e.Frontmatter["description"]); d != "" {
+				desc = d
+			}
+		}
+		if e.Metadata != nil && e.Metadata.SkillKey != "" && desc == e.Name {
+			desc = e.Metadata.SkillKey
+		}
+		disableInvoke := false
+		if e.Frontmatter != nil {
+			if v, ok := e.Frontmatter["disable-model-invocation"]; ok && (v == "true" || v == "1") {
+				disableInvoke = true
+			}
+		}
+		resolvedList = append(resolvedList, map[string]interface{}{
+			"name":                   e.Name,
+			"description":            desc,
+			"filePath":               e.FilePath,
+			"baseDir":                e.BaseDir,
+			"source":                 e.Source,
+			"disableModelInvocation": disableInvoke,
+		})
+	}
+	return map[string]interface{}{
+		"prompt":         prompt,
+		"skills":         skillsList,
+		"resolvedSkills": resolvedList,
+		"version":        0,
+	}
+}
+
+// buildMCPForSession 为会话构建 MCP 规格列表。
+// 对于数字员工会话（employee- 前缀），会合并全局 mcp.servers 与员工 manifest.mcpServers（同 key 时员工覆盖）。
+func buildMCPForSession(sessionKey string, cfg *config.OpenOctaConfig) []string {
+	merged := &config.McpConfig{Servers: make(map[string]config.McpServerEntry)}
+	if cfg != nil && cfg.Mcp != nil {
+		for k, v := range cfg.Mcp.Servers {
+			merged.Servers[k] = v
+		}
+	}
+	if employeeID := parseEmployeeIDFromSessionKey(sessionKey); employeeID != "" {
+		env := func(k string) string { return os.Getenv(k) }
+		if m, err := employees.LoadManifest(employeeID, env); err == nil && m != nil && len(m.McpServers) > 0 {
+			for k, v := range m.McpServers {
+				merged.Servers[k] = v
+			}
+		}
+	}
+	return mcp.BuildServerSpecsFromMcpConfig(merged)
+}
+
+// parseEmployeeIDFromSessionKey 解析 sessionKey 中的数字员工 ID。
+// 支持以下格式：
+// - agent:main:employee:<employeeId>:run:<sessionId>（推荐格式）
+// - agent:<agentId>:employee-<employeeId>-<rest>
+// - employee-<employeeId>-<rest>
+// - employee-<employeeId>
+func parseEmployeeIDFromSessionKey(sessionKey string) string {
+	sessionKey = strings.TrimSpace(strings.ToLower(sessionKey))
+	if sessionKey == "" {
+		return ""
+	}
+	parts := strings.Split(sessionKey, ":")
+	// agent:main:employee:<id>:run:<sessionId>
+	if len(parts) >= 4 && parts[2] == "employee" && parts[3] != "" && parts[3] != "run" {
+		return parts[3]
+	}
+	suffix := sessionKey
+	if strings.HasPrefix(sessionKey, "agent:") {
+		if len(parts) >= 3 {
+			suffix = parts[2]
+		} else {
+			return ""
+		}
+	}
+	if strings.HasPrefix(suffix, "employee-") {
+		rest := strings.TrimPrefix(suffix, "employee-")
+		if rest == "" {
+			return ""
+		}
+		if idx := strings.IndexByte(rest, '-'); idx > 0 {
+			return rest[:idx]
+		}
+		return rest
+	}
+	return ""
 }
 
 // SessionRunSnapshot holds optional session data to persist after a run (systemPromptReport, skillsSnapshot, tools).
@@ -745,7 +929,7 @@ func ChatSendHandler(opts HandlerOpts) error {
 	//	deliver = d
 	//}
 	thinking, _ := opts.Params["thinking"].(string)
-	timeoutMs := 300000 // default 300 seconds
+	timeoutMs := 600000 // default 600 seconds， 默认10分钟。
 	if t, ok := opts.Params["timeoutMs"].(float64); ok && t > 0 {
 		timeoutMs = int(t)
 	} else if t, ok := opts.Params["timeoutMs"].(int); ok && t > 0 {
@@ -829,9 +1013,9 @@ func ChatSendHandler(opts HandlerOpts) error {
 
 			// Create runtime with model factory from config
 			var modelFactory api.ModelFactory
-			if ctxForBroadcast != nil && ctxForBroadcast.Config != nil {
+			if cfg := loadConfigFromContext(ctxForBroadcast); cfg != nil {
 				agentID := agent.ResolveSessionAgentID(sessionKey)
-				factory, factoryErr := agent.CreateModelFactoryFromConfig(ctxForBroadcast.Config, agentID)
+				factory, factoryErr := agent.CreateModelFactoryFromConfig(cfg, agentID)
 				if factoryErr != nil {
 					chatLog.Warn("failed to create model factory from config, using default agentID=%s error=%v", agentID, factoryErr)
 					modelFactory = runtime.DefaultModelFactory()
@@ -847,20 +1031,19 @@ func ChatSendHandler(opts HandlerOpts) error {
 			if ctxForBroadcast != nil && ctxForBroadcast.InvokeMethod != nil {
 				invoker = &gatewayInvokerAdapter{invoke: ctxForBroadcast.InvokeMethod}
 			}
-			// Resolve workspace root and config first so we can decide MCP source (config vs context)
+			// Resolve workspace root and config first so we can decide MCP source (config vs context).
+			// 使用 loadConfigFromContext 确保在 ctx.Config 为空时也能从 LoadConfigSnapshot 获取最新配置（含 MCP）。
 			projectRoot := ""
-			var runtimeConfig *config.OpenOctaConfig
+			runtimeConfig := loadConfigFromContext(ctxForBroadcast)
 			agentID := "main"
-			if ctxForBroadcast != nil && ctxForBroadcast.Config != nil {
-				runtimeConfig = ctxForBroadcast.Config
+			if runtimeConfig != nil {
 				agentID = agent.ResolveSessionAgentID(sessionKey)
-				projectRoot = agent.ResolveAgentWorkspaceDir(ctxForBroadcast.Config, agentID, os.Getenv)
+				projectRoot = agent.ResolveAgentWorkspaceDir(runtimeConfig, agentID, os.Getenv)
 			}
 			if projectRoot == "" {
 				projectRoot = "."
 			}
-			// mcpServers := runtime.BuildMCPServersFromConfig(runtimeConfig)
-			mcpServers := make([]string, 0)
+			mcpServers := buildMCPForSession(sessionKey, runtimeConfig)
 			agentTools := tools.DefaultToolsWithInvoker(invoker)
 			// Only add MCP tools from context when runtime is NOT given MCPServers, to avoid duplicate registration.
 			// When MCPServers is set, the runtime (agentsdk-go) will connect to those servers and register tools once.
@@ -875,20 +1058,30 @@ func ChatSendHandler(opts HandlerOpts) error {
 				}
 			}
 
+			// 数字员工会话：若 manifest 有 Prompt，作为 SystemPromptOverrides 传入，/new 后仍保留人设
+			systemPromptOverrides := ""
+			if empID := parseEmployeeIDFromSessionKey(sessionKey); empID != "" {
+				env := func(k string) string { return os.Getenv(k) }
+				if m, err := employees.LoadManifest(empID, env); err == nil && m != nil && strings.TrimSpace(m.Prompt) != "" {
+					systemPromptOverrides = strings.TrimSpace(m.Prompt)
+				}
+			}
+
 			rtOpts := runtime.Options{
-				Tools:              agentTools,
-				ModelFactory:       modelFactory,
-				ProjectRoot:        projectRoot,
-				Config:             runtimeConfig,
-				EnableSkills:       true,
-				EnableCommands:     true,
-				EnableSubagents:    true,
-				EnableSandbox:      true,
-				EnableSystemPrompt: true,
-				MCPServers:         mcpServers,
-				TokenTracking:      true,
-				AgentID:            "main", // session transcript path is ~/.openclaw/agents/main/sessions/<sessionID>.jsonl
-				Env:                os.Getenv,
+				Tools:                 agentTools,
+				ModelFactory:          modelFactory,
+				ProjectRoot:           projectRoot,
+				Config:                runtimeConfig,
+				EnableSkills:          true,
+				EnableCommands:        true,
+				EnableSubagents:       true,
+				EnableSandbox:         true,
+				EnableSystemPrompt:    true,
+				SystemPromptOverrides: systemPromptOverrides,
+				MCPServers:            mcpServers,
+				TokenTracking:         true,
+				AgentID:               "main", // session transcript path is ~/.openocta/agents/main/sessions/<sessionID>.jsonl
+				Env:                   os.Getenv,
 			}
 			rt, err := runtime.New(ctx, rtOpts)
 			if err != nil {
@@ -967,7 +1160,7 @@ func ChatSendHandler(opts HandlerOpts) error {
 				} else {
 					appendErrorToTranscript(transcriptPath, "模型未返回任何输出", runId, sessionKey, ctxForBroadcast)
 				}
-				snapshot := &SessionRunSnapshot{SkillsSnapshot: buildSkillsSnapshotForSession(projectRoot, runtimeConfig)}
+				snapshot := &SessionRunSnapshot{SkillsSnapshot: buildSkillsSnapshotForSession(projectRoot, runtimeConfig, sessionKey)}
 				updateSessionAfterRun(ctxForBroadcast, sessionKey, sessionID, sessionFile, snapshot)
 				return
 			}
@@ -1197,7 +1390,7 @@ func ChatSendHandler(opts HandlerOpts) error {
 				}
 			}
 
-			snapshot := &SessionRunSnapshot{SkillsSnapshot: buildSkillsSnapshotForSession(projectRoot, runtimeConfig)}
+			snapshot := &SessionRunSnapshot{SkillsSnapshot: buildSkillsSnapshotForSession(projectRoot, runtimeConfig, sessionKey)}
 			updateSessionAfterRun(ctxForBroadcast, sessionKey, sessionID, sessionFile, snapshot)
 		}()
 	}

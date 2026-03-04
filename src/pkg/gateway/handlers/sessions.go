@@ -535,6 +535,54 @@ func SessionsDeleteHandler(opts HandlerOpts) error {
 	return nil
 }
 
+// DeleteSessionsForEmployeeID 删除与指定数字员工关联的所有会话。
+// 用于 employees.delete 时一并清理会话。
+func DeleteSessionsForEmployeeID(employeeID string, ctx *Context) error {
+	employeeID = strings.TrimSpace(strings.ToLower(employeeID))
+	if employeeID == "" {
+		return nil
+	}
+	cfg := loadConfigFromContext(ctx)
+	if cfg == nil {
+		return nil
+	}
+	env := func(k string) string { return os.Getenv(k) }
+	storePath := session.ResolveDefaultSessionStorePath("main", env)
+	store, err := session.LoadSessionStore(storePath)
+	if err != nil {
+		return err
+	}
+	// 匹配 employee:id 或 employee-id 的 key
+	empColon := "employee:" + employeeID
+	empDash := "employee-" + employeeID
+	var keysToDelete []string
+	for k := range store {
+		lower := strings.ToLower(k)
+		if strings.Contains(lower, empColon) || strings.Contains(lower, empDash) ||
+			strings.HasPrefix(lower, "agent:main:employee:"+employeeID+":") ||
+			strings.HasPrefix(lower, "agent:main:employee-"+employeeID) {
+			keysToDelete = append(keysToDelete, k)
+		}
+	}
+	for _, key := range keysToDelete {
+		target := resolveGatewaySessionStoreTarget(cfg, key, env)
+		entry, _ := loadSessionEntryFromStore(storePath, key, target.storeKeys)
+		if entry.SessionID != "" {
+			candidates := resolveSessionTranscriptCandidates(entry.SessionID, storePath, entry.SessionFile, target.agentID, env)
+			for _, candidate := range candidates {
+				if _, err := os.Stat(candidate); err == nil {
+					archiveFileOnDisk(candidate, "deleted")
+				}
+			}
+		}
+		delete(store, key)
+	}
+	if len(keysToDelete) > 0 {
+		return session.SaveSessionStore(storePath, store)
+	}
+	return nil
+}
+
 // SessionsCompactHandler handles "sessions.compact".
 func SessionsCompactHandler(opts HandlerOpts) error {
 	// Parse and validate params
@@ -807,6 +855,13 @@ func resolveGatewaySessionStoreTarget(cfg *config.OpenOctaConfig, key string, en
 	storeKeys := []string{canonicalKey}
 	if key != "" && key != canonicalKey {
 		storeKeys = append(storeKeys, key)
+	}
+	// For keys in "agent:{agentId}:{rest}" form, also try the underlying
+	// "{rest}" value when looking up entries in the per-agent store.
+	// Many channels/tools use non-prefixed keys on disk (e.g. "feishu:group:xxx"
+	// or a bare sessionId), while the gateway exposes canonical "agent:..." keys.
+	if _, rest, ok := parseAgentSessionKey(canonicalKey); ok && strings.TrimSpace(rest) != "" {
+		storeKeys = append(storeKeys, rest)
 	}
 
 	return sessionStoreTarget{

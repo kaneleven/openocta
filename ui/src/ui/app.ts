@@ -226,6 +226,8 @@ export class OpenClawApp extends LitElement {
   @state() sessionsFilterLimit = "120";
   @state() sessionsIncludeGlobal = true;
   @state() sessionsIncludeUnknown = false;
+  @state() sessionsBulkMode = false;
+  @state() sessionsSelectedKeys: string[] = [];
 
   @state() usageLoading = false;
   @state() usageResult: import("./types.js").SessionsUsageResult | null = null;
@@ -302,6 +304,45 @@ export class OpenClawApp extends LitElement {
   @state() skillsUploadError: string | null = null;
   @state() skillsUploadTemplate: string | null = null;
   @state() skillsUploadBusy = false;
+
+  @state() digitalEmployeesLoading = false;
+  @state() digitalEmployeesError: string | null = null;
+  @state() digitalEmployees: {
+    id: string;
+    name: string;
+    description: string;
+    prompt?: string;
+    enabled?: boolean;
+    createdAt?: number;
+    builtin: boolean;
+    skillIds?: string[];
+    skillNames?: string[];
+    mcpServerKeys?: string[];
+  }[] = [];
+  @state() digitalEmployeeCreateModalOpen = false;
+  @state() digitalEmployeeCreateName = "";
+  @state() digitalEmployeeCreateDescription = "";
+  @state() digitalEmployeeCreatePrompt = "";
+  @state() digitalEmployeeCreateError: string | null = null;
+  @state() digitalEmployeeCreateBusy = false;
+  @state() digitalEmployeeAdvancedOpen = false;
+  @state() digitalEmployeeCreateMcpJson = "";
+  @state() digitalEmployeeSkillUploadName = "";
+  @state() digitalEmployeeSkillUploadFiles: File[] = [];
+  @state() digitalEmployeeSkillUploadError: string | null = null;
+  @state() digitalEmployeeSkillUploadBusy = false;
+  @state() digitalEmployeeEditModalOpen = false;
+  @state() digitalEmployeeEditId = "";
+  @state() digitalEmployeeEditName = "";
+  @state() digitalEmployeeEditDescription = "";
+  @state() digitalEmployeeEditPrompt = "";
+  @state() digitalEmployeeEditMcpJson = "";
+  @state() digitalEmployeeEditSkillNames: string[] = [];
+  @state() digitalEmployeeEditSkillFilesToUpload: File[] = [];
+  @state() digitalEmployeeEditSkillsToDelete: string[] = [];
+  @state() digitalEmployeeEditEnabled = true;
+  @state() digitalEmployeeEditError: string | null = null;
+  @state() digitalEmployeeEditBusy = false;
 
   @state() debugLoading = false;
   @state() debugStatus: StatusSummary | null = null;

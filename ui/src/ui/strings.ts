@@ -33,6 +33,7 @@ type Strings = {
   subtitleSkills: string;
   subtitleNodes: string;
   subtitleChat: string;
+  subtitleDigitalEmployee: string;
   subtitleAgentSwarm: string;
   subtitleConfig: string;
   subtitleDebug: string;
@@ -48,6 +49,7 @@ type Strings = {
   navTitleSkills: string;
   navTitleNodes: string;
   navTitleChat: string;
+  navTitleDigitalEmployee: string;
   navTitleAgentSwarm: string;
   agentSwarmDevBadge: string;
   navTitleConfig: string;
@@ -752,6 +754,7 @@ const EN: Strings = {
   subtitleSkills: "Manage skill availability and API key injection.",
   subtitleNodes: "Paired devices, capabilities, and command exposure.",
   subtitleChat: "Direct gateway chat session for quick interventions.",
+  subtitleDigitalEmployee: "Start templated conversations with domain-specific digital employees.",
   subtitleAgentSwarm: "Multi-agent swarm collaboration for ops and SRE.",
   subtitleConfig: "Edit ~/.openclaw/openclaw.json safely.",
   subtitleDebug: "Gateway snapshots, events, and manual RPC calls.",
@@ -766,6 +769,7 @@ const EN: Strings = {
   navTitleSkills: "Skills",
   navTitleNodes: "Nodes",
   navTitleChat: "Chat",
+  navTitleDigitalEmployee: "Digital Employee",
   navTitleAgentSwarm: "Agent Swarm",
   agentSwarmDevBadge: "In Development",
   navTitleConfig: "Config",
@@ -1461,6 +1465,7 @@ const ZH: Strings = {
   subtitleSkills: "管理技能可用性与 API 密钥注入。",
   subtitleNodes: "已配对设备、能力与命令。",
   subtitleChat: "直接与网关聊天进行快速操作。",
+  subtitleDigitalEmployee: "按业务场景切换数字员工模版，一键开启新会话。",
   subtitleAgentSwarm: "多Agent集群协作，面向运维与 SRE。",
   subtitleConfig: "安全编辑 ~/.openocta/openocta.json。",
   subtitleDebug: "网关快照、事件与手动 RPC 调用。",
@@ -1475,6 +1480,7 @@ const ZH: Strings = {
   navTitleSkills: "技能",
   navTitleNodes: "节点",
   navTitleChat: "Chat",
+  navTitleDigitalEmployee: "数字员工",
   navTitleAgentSwarm: "Agent Swarm",
   agentSwarmDevBadge: "开发中",
   navTitleConfig: "配置",

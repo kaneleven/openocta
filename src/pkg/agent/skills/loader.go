@@ -170,6 +170,13 @@ func LoadWorkspaceEntries(workspaceDir string, opts *LoadOptions) ([]Entry, erro
 	return result, nil
 }
 
+// LoadEntriesFromDir 是对内部 loadSkillsFromDir 的导出封装，便于其他包（如 employees）
+// 在保持统一解析逻辑的前提下，从任意目录加载 SKILL.md。
+// 返回空切片表示目录不存在或无可用 skills。
+func LoadEntriesFromDir(dir string, source string) ([]Entry, error) {
+	return loadSkillsFromDir(dir, source)
+}
+
 // loadSkillsFromDir loads skills from a directory.
 // Returns empty slice if directory doesn't exist or has no skills.
 func loadSkillsFromDir(dir string, source string) ([]Entry, error) {
@@ -252,6 +259,12 @@ func loadSkillsFromFS(fsys fs.FS, basePath string, source string) ([]Entry, erro
 		}
 	}
 	return skills, nil
+}
+
+// LoadEntriesFromFS 在给定 fs.FS 下，从 basePath 开始递归加载 skills。
+// 主要用于从 embed.SkillsFS / embed.AgentsSkillsFS 这类嵌入式 FS 中按前缀加载。
+func LoadEntriesFromFS(fsys fs.FS, basePath string, source string) ([]Entry, error) {
+	return loadSkillsFromFS(fsys, basePath, source)
 }
 
 // loadSkillFromFSFile loads a skill from a file within fs.FS, storing content in EmbeddedContent.

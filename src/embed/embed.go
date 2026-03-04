@@ -10,9 +10,9 @@ import (
 	"strings"
 )
 
-// Assets embeds frontend, config-schema, openocta.json.example, .env and skills (copied by build script).
+// Assets embeds frontend, config-schema, openocta.json.example, .env, skills 和 agents_skills（由构建脚本复制）。
 //
-//go:embed frontend config-schema.json openocta.json.example .env skills
+//go:embed frontend config-schema.json openocta.json.example .env skills employee_skills/*
 var assets embed.FS
 
 func init() {
@@ -68,4 +68,10 @@ func ConfigExampleJSON() ([]byte, error) {
 // Returns nil if skills directory was not embedded (e.g. build without copy step).
 func SkillsFS() (fs.FS, error) {
 	return fs.Sub(assets, "skills")
+}
+
+// AgentsSkillsFS 返回内置数字员工的 skills 文件系统（embed/agents_skills）。
+// 如果未嵌入 agents_skills 目录，则返回错误。
+func AgentsSkillsFS() (fs.FS, error) {
+	return fs.Sub(assets, "agents_skills")
 }

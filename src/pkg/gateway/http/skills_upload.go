@@ -15,15 +15,25 @@ import (
 	"strings"
 
 	"github.com/openocta/openocta/pkg/gateway/handlers"
+	"github.com/openocta/openocta/pkg/paths"
 )
 
-// skillNameRe: English letters, numbers, hyphens, underscores. 1-64 chars.
-var skillNameRe = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$`)
+// skillNameRe: English letters, numbers, hyphens, underscores, dots (e.g. prometheus-1.0.0). 1-64 chars.
+// Note: ".." is rejected separately for path safety.
+var skillNameRe = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$`)
 
 const (
 	skillUploadMaxSize   = 10 << 20 // 10 MB
 	skillTemplateContent = "---\nname: %s\ndescription: Brief description of what this skill does.\nmetadata: {}\n---\n\n# %s\n\nDescribe when and how to use this skill.\n\n## When to Use\n\n- Use case 1\n- Use case 2\n\n## How It Works\n\n1. Step one\n2. Step two\n\n## Examples\n\n```\nExample usage\n```\n"
 )
+
+// validateSkillName checks name format and rejects ".." for path safety.
+func validateSkillName(name string) bool {
+	if strings.Contains(name, "..") {
+		return false
+	}
+	return skillNameRe.MatchString(name)
+}
 
 // validateSkillContent checks SKILL.md format: must have YAML frontmatter with --- and name.
 // Returns (valid, errorMessage, templateIfInvalid).
@@ -146,9 +156,9 @@ func (s *Server) handleSkillsUpload(w http.ResponseWriter, r *http.Request) {
 				base = base[:len(base)-4]
 			}
 			nameRaw = strings.TrimSpace(base)
-			if nameRaw == "" || !skillNameRe.MatchString(nameRaw) {
+			if nameRaw == "" || !validateSkillName(nameRaw) {
 				writeSkillsUploadError(w, http.StatusBadRequest,
-					"when uploading zip without name, filename must be a valid skill name (1-64 chars, English letters, numbers, hyphens, underscores)",
+					"when uploading zip without name, filename must be a valid skill name (1-64 chars, letters, numbers, hyphens, underscores, dots)",
 					fmt.Sprintf(skillTemplateContent, "my-skill", "My Skill"))
 				return
 			}
@@ -158,9 +168,9 @@ func (s *Server) handleSkillsUpload(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf(skillTemplateContent, "my-skill", "My Skill"))
 			return
 		}
-	} else if !skillNameRe.MatchString(nameRaw) {
+	} else if !validateSkillName(nameRaw) {
 		writeSkillsUploadError(w, http.StatusBadRequest,
-			"name must be 1-64 chars, English letters, numbers, hyphens, underscores",
+			"name must be 1-64 chars, letters, numbers, hyphens, underscores, dots (no ..)",
 			fmt.Sprintf(skillTemplateContent, "my-skill", "My Skill"))
 		return
 	}
@@ -303,4 +313,247 @@ func writeSkillsUploadError(w http.ResponseWriter, status int, message string, t
 		payload["template"] = template
 	}
 	_ = json.NewEncoder(w).Encode(payload)
+}
+
+// handleEmployeeSkillsUpload handles POST /api/employee-skills/upload (multipart: employeeId, name, file).
+// Skills are stored under ~/.openocta/employee_skills/<employeeId>/<skillName>/..., using ResolveStateDir
+// to remain compatible with Windows and other platforms.
+func (s *Server) handleEmployeeSkillsUpload(w http.ResponseWriter, r *http.Request) {
+	// CORS: 允许跨域请求（UI 可能与 Gateway 不同源）
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Limit body size
+	r.Body = http.MaxBytesReader(w, r.Body, skillUploadMaxSize)
+	if err := r.ParseMultipartForm(skillUploadMaxSize); err != nil {
+		writeSkillsUploadError(w, http.StatusBadRequest, "failed to parse form: "+err.Error(), "")
+		return
+	}
+
+	employeeIDRaw := strings.TrimSpace(r.FormValue("employeeId"))
+	if employeeIDRaw == "" {
+		writeSkillsUploadError(w, http.StatusBadRequest, "employeeId is required", "")
+		return
+	}
+	// Reuse skillNameRe for a conservative, cross-platform-safe employee ID (no dots in employeeId).
+	if !skillNameRe.MatchString(employeeIDRaw) || strings.Contains(employeeIDRaw, "..") {
+		writeSkillsUploadError(
+			w,
+			http.StatusBadRequest,
+			"employeeId must be 1-64 chars, English letters, numbers, hyphens, underscores",
+			"",
+		)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		writeSkillsUploadError(w, http.StatusBadRequest, "file is required: "+err.Error(), "")
+		return
+	}
+	defer file.Close()
+
+	contentType := header.Header.Get("Content-Type")
+	isZip := strings.Contains(contentType, "zip") || strings.HasSuffix(strings.ToLower(header.Filename), ".zip")
+
+	nameRaw := strings.TrimSpace(r.FormValue("name"))
+	if nameRaw == "" {
+		if isZip {
+			// Derive name from zip filename (without extension) when omitted.
+			base := filepath.Base(header.Filename)
+			if strings.HasSuffix(strings.ToLower(base), ".zip") {
+				base = base[:len(base)-4]
+			}
+			nameRaw = strings.TrimSpace(base)
+			if nameRaw == "" || !validateSkillName(nameRaw) {
+				writeSkillsUploadError(w, http.StatusBadRequest,
+					"when uploading zip without name, filename must be a valid skill name (1-64 chars, letters, numbers, hyphens, underscores, dots)",
+					fmt.Sprintf(skillTemplateContent, "my-skill", "My Skill"))
+				return
+			}
+		} else {
+			writeSkillsUploadError(w, http.StatusBadRequest,
+				"name is required for single file upload (SKILL.md)",
+				fmt.Sprintf(skillTemplateContent, "my-skill", "My Skill"))
+			return
+		}
+	} else if !validateSkillName(nameRaw) {
+		writeSkillsUploadError(w, http.StatusBadRequest,
+			"name must be 1-64 chars, letters, numbers, hyphens, underscores, dots (no ..)",
+			fmt.Sprintf(skillTemplateContent, "my-skill", "My Skill"))
+		return
+	}
+
+	env := func(k string) string { return os.Getenv(k) }
+	stateDir := paths.ResolveStateDir(env)
+	rootDir := filepath.Join(stateDir, "employee_skills", employeeIDRaw)
+	targetDir := filepath.Join(rootDir, nameRaw)
+
+	// Ensure parent exists
+	if err := os.MkdirAll(rootDir, 0755); err != nil {
+		writeSkillsUploadError(w, http.StatusInternalServerError, "failed to create employee skills dir: "+err.Error(), "")
+		return
+	}
+
+	buf, err := io.ReadAll(io.LimitReader(file, skillUploadMaxSize))
+	if err != nil {
+		writeSkillsUploadError(w, http.StatusBadRequest, "failed to read file: "+err.Error(), "")
+		return
+	}
+
+	var skillContent []byte
+	if isZip {
+		skillContent, err = extractSkillFromZip(bytes.NewReader(buf), int64(len(buf)))
+		if err != nil {
+			template := fmt.Sprintf(skillTemplateContent, nameRaw, nameRaw)
+			writeSkillsUploadError(w, http.StatusBadRequest, err.Error(), template)
+			return
+		}
+	} else {
+		// Single file - must be SKILL.md
+		fname := strings.ToLower(filepath.Base(header.Filename))
+		if fname != "skill.md" {
+			writeSkillsUploadError(w, http.StatusBadRequest,
+				"single file must be named SKILL.md",
+				fmt.Sprintf(skillTemplateContent, nameRaw, nameRaw))
+			return
+		}
+		skillContent = buf
+	}
+
+	// Validate format
+	valid, errMsg, template := validateSkillContent(skillContent, nameRaw)
+	if !valid {
+		writeSkillsUploadError(w, http.StatusBadRequest, errMsg, template)
+		return
+	}
+
+	// Remove existing dir if present (overwrite)
+	_ = os.RemoveAll(targetDir)
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		writeSkillsUploadError(w, http.StatusInternalServerError, "failed to create skill dir: "+err.Error(), "")
+		return
+	}
+
+	if isZip {
+		// Extract zip: find the dir containing SKILL.md and extract its contents to targetDir
+		zr, err := zip.NewReader(bytes.NewReader(buf), int64(len(buf)))
+		if err != nil {
+			writeSkillsUploadError(w, http.StatusBadRequest, "invalid zip: "+err.Error(), "")
+			return
+		}
+		// Zip uses / or \; normalize to / for consistent prefix logic (Windows-compatible)
+		prefix := ""
+		for _, f := range zr.File {
+			if f.FileInfo().IsDir() {
+				continue
+			}
+			clean := filepath.ToSlash(filepath.Clean(f.Name))
+			if strings.Contains(clean, "..") {
+				continue
+			}
+			lower := strings.ToLower(clean)
+			if strings.HasSuffix(lower, "skill.md") {
+				// path.Dir works with / on all platforms
+				dir := path.Dir(clean)
+				if dir != "." {
+					prefix = dir + "/"
+				}
+				break
+			}
+		}
+		for _, f := range zr.File {
+			if f.FileInfo().IsDir() {
+				continue
+			}
+			clean := filepath.ToSlash(filepath.Clean(f.Name))
+			if strings.Contains(clean, "..") {
+				continue
+			}
+			rel := clean
+			if prefix != "" && strings.HasPrefix(clean, prefix) {
+				rel = strings.TrimPrefix(clean, prefix)
+			}
+			if rel == "" || (rel == clean && strings.Contains(clean, "/")) {
+				continue
+			}
+			dest := filepath.Join(targetDir, filepath.FromSlash(rel))
+			_ = os.MkdirAll(filepath.Dir(dest), 0755)
+			rc, err := f.Open()
+			if err != nil {
+				continue
+			}
+			data, _ := io.ReadAll(io.LimitReader(rc, 1<<20))
+			rc.Close()
+			_ = os.WriteFile(dest, data, 0644)
+		}
+	} else {
+		skillPath := filepath.Join(targetDir, "SKILL.md")
+		if err := os.WriteFile(skillPath, skillContent, 0644); err != nil {
+			writeSkillsUploadError(w, http.StatusInternalServerError, "failed to write SKILL.md: "+err.Error(), "")
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	result := map[string]interface{}{
+		"ok":         true,
+		"employeeId": employeeIDRaw,
+		"name":       nameRaw,
+		"path":       targetDir,
+	}
+	marshal, err := json.Marshal(result)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(marshal)
+}
+
+// handleEmployeeSkillsDelete handles DELETE /api/employee-skills/delete (query: employeeId, name).
+func (s *Server) handleEmployeeSkillsDelete(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if r.Method != http.MethodDelete {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	employeeIDRaw := strings.TrimSpace(r.URL.Query().Get("employeeId"))
+	nameRaw := strings.TrimSpace(r.URL.Query().Get("name"))
+	if employeeIDRaw == "" || nameRaw == "" {
+		writeSkillsUploadError(w, http.StatusBadRequest, "employeeId and name are required", "")
+		return
+	}
+	if !skillNameRe.MatchString(employeeIDRaw) || strings.Contains(employeeIDRaw, "..") {
+		writeSkillsUploadError(w, http.StatusBadRequest, "employeeId must be 1-64 chars, letters, numbers, hyphens, underscores", "")
+		return
+	}
+	if !validateSkillName(nameRaw) {
+		writeSkillsUploadError(w, http.StatusBadRequest, "name must be 1-64 chars, letters, numbers, hyphens, underscores, dots (no ..)", "")
+		return
+	}
+	env := func(k string) string { return os.Getenv(k) }
+	stateDir := paths.ResolveStateDir(env)
+	targetDir := filepath.Join(stateDir, "employee_skills", employeeIDRaw, nameRaw)
+	if err := os.RemoveAll(targetDir); err != nil {
+		writeSkillsUploadError(w, http.StatusInternalServerError, "failed to delete skill: "+err.Error(), "")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "employeeId": employeeIDRaw, "name": nameRaw})
 }

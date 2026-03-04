@@ -3,7 +3,7 @@ import { t } from "./strings.js";
 
 export function getTabGroups() {
   return [
-    { label: t("tabGroupChat"), tabs: ["chat", "agentSwarm"] as const },
+    { label: t("tabGroupChat"), tabs: ["chat", "digitalEmployee", "agentSwarm"] as const },
     {
       label: t("tabGroupControl"),
       tabs: ["overview", "channels", "instances", "sessions", "usage", "cron"] as const,
@@ -24,6 +24,7 @@ export type Tab =
   | "skills"
   | "nodes"
   | "chat"
+  | "digitalEmployee"
   | "agentSwarm"
   | "config"
   | "debug"
@@ -40,6 +41,7 @@ const TAB_PATHS: Record<Tab, string> = {
   skills: "/skills",
   nodes: "/nodes",
   chat: "/chat",
+  digitalEmployee: "/digital-employee",
   agentSwarm: "/agent-swarm",
   config: "/config",
   debug: "/debug",
@@ -133,6 +135,8 @@ export function iconForTab(tab: Tab): IconName {
       return "folder";
     case "chat":
       return "messageSquare";
+    case "digitalEmployee":
+      return "users";
     case "agentSwarm":
       return "brain";
     case "overview":
@@ -184,6 +188,8 @@ export function titleForTab(tab: Tab) {
       return t("navTitleNodes");
     case "chat":
       return t("navTitleChat");
+    case "digitalEmployee":
+      return t("navTitleDigitalEmployee");
     case "agentSwarm":
       return t("navTitleAgentSwarm");
     case "config":
@@ -219,6 +225,8 @@ export function subtitleForTab(tab: Tab) {
       return t("subtitleNodes");
     case "chat":
       return t("subtitleChat");
+    case "digitalEmployee":
+      return t("subtitleDigitalEmployee");
     case "agentSwarm":
       return t("subtitleAgentSwarm");
     case "config":

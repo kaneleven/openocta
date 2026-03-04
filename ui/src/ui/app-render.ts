@@ -42,7 +42,7 @@ import {
 import { loadLogs } from "./controllers/logs.ts";
 import { loadNodes } from "./controllers/nodes.ts";
 import { loadPresence } from "./controllers/presence.ts";
-import { deleteSession, loadSessions, patchSession } from "./controllers/sessions.ts";
+import { deleteSession, deleteSessions, loadSessions, patchSession } from "./controllers/sessions.ts";
 import {
   deleteSkill,
   installSkill,
@@ -65,6 +65,15 @@ const debouncedLoadUsage = (state: UsageState) => {
   usageDateDebounceTimeout = window.setTimeout(() => void loadUsage(state), 400);
 };
 import { renderAgentSwarm } from "./views/agent-swarm.ts";
+import { renderDigitalEmployee } from "./views/digital-employee.ts";
+import {
+  loadDigitalEmployees,
+  createDigitalEmployee,
+  updateDigitalEmployeeEnabled,
+  deleteDigitalEmployee,
+  getDigitalEmployee,
+  updateDigitalEmployee,
+} from "./controllers/digital-employees.ts";
 import { renderAgents } from "./views/agents.ts";
 import { renderChannels } from "./views/channels.ts";
 import { renderChat } from "./views/chat.ts";
@@ -304,6 +313,8 @@ export function renderApp(state: AppViewState) {
                 includeGlobal: state.sessionsIncludeGlobal,
                 includeUnknown: state.sessionsIncludeUnknown,
                 basePath: state.basePath,
+                bulkMode: state.sessionsBulkMode,
+                selectedKeys: state.sessionsSelectedKeys,
                 onFiltersChange: (next) => {
                   state.sessionsFilterActive = next.activeMinutes;
                   state.sessionsFilterLimit = next.limit;
@@ -313,6 +324,43 @@ export function renderApp(state: AppViewState) {
                 onRefresh: () => loadSessions(state),
                 onPatch: (key, patch) => patchSession(state, key, patch),
                 onDelete: (key) => deleteSession(state, key),
+                onBulkModeToggle: () => {
+                  const next = !state.sessionsBulkMode;
+                  state.sessionsBulkMode = next;
+                  if (!next) {
+                    state.sessionsSelectedKeys = [];
+                  }
+                },
+                onSelectionChange: (key, selected) => {
+                  if (!key || key === "agent.main.main") {
+                    return;
+                  }
+                  if (selected) {
+                    if (!state.sessionsSelectedKeys.includes(key)) {
+                      state.sessionsSelectedKeys = [...state.sessionsSelectedKeys, key];
+                    }
+                  } else {
+                    state.sessionsSelectedKeys = state.sessionsSelectedKeys.filter(
+                      (entry: string) => entry !== key,
+                    );
+                  }
+                },
+                onSelectAll: (keys) => {
+                  const safeKeys = keys.filter((key) => key && key !== "agent.main.main");
+                  state.sessionsSelectedKeys = Array.from(new Set(safeKeys));
+                },
+                onClearSelection: () => {
+                  state.sessionsSelectedKeys = [];
+                },
+                onBulkDelete: async (keys) => {
+                  const safeKeys = keys.filter((key) => key && key !== "agent.main.main");
+                  if (safeKeys.length === 0) {
+                    return;
+                  }
+                  await deleteSessions(state, safeKeys);
+                  state.sessionsSelectedKeys = [];
+                  state.sessionsBulkMode = false;
+                },
               })
             : nothing
         }
@@ -1171,6 +1219,185 @@ export function renderApp(state: AppViewState) {
                 onSplitRatioChange: (ratio: number) => state.handleSplitRatioChange(ratio),
                 assistantName: state.assistantName,
                 assistantAvatar: state.assistantAvatar,
+              })
+            : nothing
+        }
+
+        ${
+          state.tab === "digitalEmployee"
+            ? renderDigitalEmployee({
+                loading: state.digitalEmployeesLoading,
+                employees: state.digitalEmployees,
+                error: state.digitalEmployeesError,
+                onRefresh: () => loadDigitalEmployees(state),
+                createModalOpen: state.digitalEmployeeCreateModalOpen,
+                createName: state.digitalEmployeeCreateName,
+                createDescription: state.digitalEmployeeCreateDescription,
+                createPrompt: state.digitalEmployeeCreatePrompt,
+                createError: state.digitalEmployeeCreateError,
+                createBusy: state.digitalEmployeeCreateBusy,
+                advancedOpen: state.digitalEmployeeAdvancedOpen,
+                mcpJson: state.digitalEmployeeCreateMcpJson,
+                onMcpJsonChange: (value) => {
+                  state.digitalEmployeeCreateMcpJson = value;
+                },
+                skillUploadName: state.digitalEmployeeSkillUploadName,
+                skillUploadFiles: state.digitalEmployeeSkillUploadFiles ?? [],
+                skillUploadError: state.digitalEmployeeSkillUploadError,
+                onCreateOpen: () => {
+                  state.digitalEmployeeCreateModalOpen = true;
+                  state.digitalEmployeeAdvancedOpen = false;
+                  state.digitalEmployeeCreateMcpJson = "";
+                  state.digitalEmployeeSkillUploadName = "";
+                  state.digitalEmployeeSkillUploadFiles = [];
+                  state.digitalEmployeeSkillUploadError = null;
+                },
+                onCreateClose: () => {
+                  if (state.digitalEmployeeCreateBusy) return;
+                  state.digitalEmployeeCreateModalOpen = false;
+                  state.digitalEmployeeCreateError = null;
+                  state.digitalEmployeeAdvancedOpen = false;
+                  state.digitalEmployeeCreateMcpJson = "";
+                  state.digitalEmployeeSkillUploadName = "";
+                  state.digitalEmployeeSkillUploadFiles = [];
+                  state.digitalEmployeeSkillUploadError = null;
+                },
+                onCreateNameChange: (value) => {
+                  state.digitalEmployeeCreateName = value;
+                },
+                onCreateDescriptionChange: (value) => {
+                  state.digitalEmployeeCreateDescription = value;
+                },
+                onCreatePromptChange: (value) => {
+                  state.digitalEmployeeCreatePrompt = value;
+                },
+                onCreateSubmit: async () => {
+                  await createDigitalEmployee(state);
+                  if (!state.digitalEmployeeCreateError) {
+                    state.digitalEmployeeCreateModalOpen = false;
+                    state.digitalEmployeeAdvancedOpen = false;
+                  }
+                },
+                onToggleAdvanced: () => {
+                  state.digitalEmployeeAdvancedOpen = !state.digitalEmployeeAdvancedOpen;
+                },
+                onSkillUploadNameChange: (next) => {
+                  state.digitalEmployeeSkillUploadName = next;
+                },
+                onSkillUploadFilesChange: (files) => {
+                  state.digitalEmployeeSkillUploadFiles = files ?? [];
+                },
+                onOpenEmployee: async (employeeId) => {
+                  const idPart = employeeId.trim() || "default";
+                  await loadSessions(state, { activeMinutes: 10080, limit: 200 });
+                  const sessions = state.sessionsResult?.sessions ?? [];
+                  const employeePatterns = [
+                    `agent:main:employee:${idPart}:`,
+                    `agent:main:employee-${idPart}`,
+                    `employee:${idPart}:`,
+                    `employee-${idPart}`,
+                  ];
+                  const existing = sessions.find((s) =>
+                    employeePatterns.some((p) => s.key.includes(p) || s.key === p),
+                  );
+                  const sessionKey = existing
+                    ? existing.key
+                    : `agent:main:employee:${idPart}:run:${crypto.randomUUID()}`;
+                  state.sessionKey = sessionKey;
+                  state.chatMessage = "";
+                  state.chatAttachments = [];
+                  state.chatStream = null;
+                  state.chatStreamStartedAt = null;
+                  state.chatRunId = null;
+                  state.chatQueue = [];
+                  state.resetToolStream();
+                  state.resetChatScroll();
+                  state.applySettings({
+                    ...state.settings,
+                    sessionKey,
+                    lastActiveSessionKey: sessionKey,
+                  });
+                  void state.loadAssistantIdentity();
+                  void loadChatHistory(state);
+                  void refreshChatAvatar(state);
+                  state.setTab("chat");
+                  if (!existing) {
+                    state.handleSendChat(
+                      "当前已开启数字员工会话。请以你配置的人设（如有）向用户打招呼，保持你的语气、风格和情绪。用 1～3 句话问候并询问用户想做什么。",
+                    );
+                  }
+                },
+                onToggleEnabled: (employeeId, enabled) =>
+                  updateDigitalEmployeeEnabled(state, employeeId, enabled),
+                onDelete: (employeeId) => deleteDigitalEmployee(state, employeeId),
+                onEdit: async (employeeId) => {
+                  const emp = state.digitalEmployees.find((e) => e.id === employeeId);
+                  const manifest = await getDigitalEmployee(state, employeeId);
+                  if (!manifest) {
+                    state.digitalEmployeesError = "无法加载员工详情";
+                    return;
+                  }
+                  state.digitalEmployeeEditModalOpen = true;
+                  state.digitalEmployeeEditId = manifest.id;
+                  state.digitalEmployeeEditName = manifest.name || manifest.id;
+                  state.digitalEmployeeEditDescription = manifest.description ?? "";
+                  state.digitalEmployeeEditPrompt = manifest.prompt ?? "";
+                  state.digitalEmployeeEditMcpJson =
+                    manifest.mcpServers && Object.keys(manifest.mcpServers).length > 0
+                      ? JSON.stringify(manifest.mcpServers, null, 2)
+                      : "";
+                  state.digitalEmployeeEditSkillNames =
+                    (emp?.skillNames ?? emp?.skillIds ?? manifest.skillIds ?? []) as string[];
+                  state.digitalEmployeeEditSkillFilesToUpload = [];
+                  state.digitalEmployeeEditSkillsToDelete = [];
+                  state.digitalEmployeeEditEnabled = manifest.enabled !== false;
+                  state.digitalEmployeeEditError = null;
+                },
+                editModalOpen: state.digitalEmployeeEditModalOpen,
+                editId: state.digitalEmployeeEditId,
+                editName: state.digitalEmployeeEditName,
+                editDescription: state.digitalEmployeeEditDescription,
+                editPrompt: state.digitalEmployeeEditPrompt,
+                editMcpJson: state.digitalEmployeeEditMcpJson,
+                editSkillNames: state.digitalEmployeeEditSkillNames ?? [],
+                editSkillFilesToUpload: state.digitalEmployeeEditSkillFilesToUpload ?? [],
+                editSkillsToDelete: state.digitalEmployeeEditSkillsToDelete ?? [],
+                editError: state.digitalEmployeeEditError,
+                editBusy: state.digitalEmployeeEditBusy,
+                onEditClose: () => {
+                  if (state.digitalEmployeeEditBusy) return;
+                  state.digitalEmployeeEditModalOpen = false;
+                  state.digitalEmployeeEditError = null;
+                },
+                onEditDescriptionChange: (v) => {
+                  state.digitalEmployeeEditDescription = v;
+                },
+                onEditPromptChange: (v) => {
+                  state.digitalEmployeeEditPrompt = v;
+                },
+                onEditMcpJsonChange: (v) => {
+                  state.digitalEmployeeEditMcpJson = v;
+                },
+                onEditSkillFilesChange: (files) => {
+                  state.digitalEmployeeEditSkillFilesToUpload = files ?? [];
+                },
+                onEditSkillDelete: (name) => {
+                  const list = state.digitalEmployeeEditSkillsToDelete ?? [];
+                  if (!list.includes(name)) {
+                    state.digitalEmployeeEditSkillsToDelete = [...list, name];
+                  }
+                },
+                onEditSkillUndoDelete: (name) => {
+                  state.digitalEmployeeEditSkillsToDelete = (
+                    state.digitalEmployeeEditSkillsToDelete ?? []
+                  ).filter((n) => n !== name);
+                },
+                onEditSubmit: async () => {
+                  await updateDigitalEmployee(state);
+                  if (!state.digitalEmployeeEditError) {
+                    state.digitalEmployeeEditModalOpen = false;
+                  }
+                },
               })
             : nothing
         }

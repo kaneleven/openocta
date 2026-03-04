@@ -618,4 +618,8 @@
   .list-item {
     grid-template-columns: 1fr;
   }
+
+  .list-item--row {
+    grid-template-columns: unset;
+  }
 }

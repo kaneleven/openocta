@@ -634,6 +634,23 @@
   transition: border-color var(--duration-fast) ease;
 }
 
+/* 数字员工等：按钮始终在右侧，不随响应式堆叠到下方 */
+.list-item--row {
+  display: flex !important;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 16px;
+}
+.list-item--row .list-main {
+  flex: 1;
+  min-width: 0;
+}
+.list-item--row .row {
+  flex-shrink: 0;
+}
+
 .list-item-clickable {
   cursor: pointer;
 }

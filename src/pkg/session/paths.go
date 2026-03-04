@@ -18,6 +18,39 @@ const (
 // SafeSessionIDRe validates session IDs.
 var SafeSessionIDRe = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,127}$`)
 
+// SanitizeForSessionID converts a string (e.g. from session key parts) to a valid session ID.
+// Replaces colons and other invalid chars with dashes, collapses runs, trims, and truncates.
+// Returns "main" if the result would be empty or invalid.
+func SanitizeForSessionID(s string) string {
+	s = strings.TrimSpace(strings.ToLower(s))
+	if s == "" {
+		return "main"
+	}
+	// Replace colons (common in keys like employee:sre:run:uuid) and other invalid chars with dash
+	var b strings.Builder
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '.' || r == '_' || r == '-' {
+			b.WriteRune(r)
+		} else if r == ':' || r == ' ' || r == '/' || r == '\\' {
+			if b.Len() > 0 && b.String()[b.Len()-1] != '-' {
+				b.WriteByte('-')
+			}
+		}
+	}
+	out := strings.Trim(b.String(), "-")
+	for strings.Contains(out, "--") {
+		out = strings.ReplaceAll(out, "--", "-")
+	}
+	if len(out) > 128 {
+		out = out[:128]
+	}
+	out = strings.Trim(out, "-")
+	if out == "" || !SafeSessionIDRe.MatchString(out) {
+		return "main"
+	}
+	return out
+}
+
 // ResolveAgentSessionsDir returns the sessions directory for an agent.
 func ResolveAgentSessionsDir(agentID string, env func(string) string) string {
 	stateDir := paths.ResolveStateDir(env)

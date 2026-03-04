@@ -115,3 +115,40 @@ export async function deleteSession(state: SessionsState, key: string) {
     state.sessionsLoading = false;
   }
 }
+
+export async function deleteSessions(state: SessionsState, keys: string[]) {
+  if (!state.client || !state.connected) {
+    return;
+  }
+  if (state.sessionsLoading) {
+    return;
+  }
+  const safeKeys = Array.from(
+    new Set(keys.filter((key) => key && key !== "agent.main.main")),
+  );
+  if (safeKeys.length === 0) {
+    return;
+  }
+  const label =
+    safeKeys.length === 1
+      ? `Delete session "${safeKeys[0]}"?`
+      : `Delete ${safeKeys.length} sessions?\n\nFirst: "${safeKeys[0]}"`;
+  const confirmed = window.confirm(
+    `${label}\n\nDeletes the session entries and archives their transcripts.`,
+  );
+  if (!confirmed) {
+    return;
+  }
+  state.sessionsLoading = true;
+  state.sessionsError = null;
+  try {
+    for (const key of safeKeys) {
+      await state.client.request("sessions.delete", { key, deleteTranscript: true });
+    }
+    await loadSessions(state);
+  } catch (err) {
+    state.sessionsError = String(err);
+  } finally {
+    state.sessionsLoading = false;
+  }
+}

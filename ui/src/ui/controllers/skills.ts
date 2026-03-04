@@ -163,7 +163,7 @@ export type SkillsUploadResult = {
   template?: string;
 };
 
-function gatewayHttpBase(gatewayUrl: string): string {
+export function gatewayHttpBase(gatewayUrl: string): string {
   return gatewayUrl.replace(/^ws/, "http");
 }
 

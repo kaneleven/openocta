@@ -216,36 +216,23 @@ func NewServer(addr string, version string) *Server {
 		if ok, _, _ := ctx.InvokeMethod("sessions.reset", resetParams); !ok {
 			return runID // 仍返回 runID 便于追踪
 		}
-		chatParams := map[string]interface{}{
-			"message":        p.Message,
-			"sessionKey":     sessionKey,
-			"idempotencyKey": runID,
-		}
-		if p.Thinking != "" {
-			chatParams["thinking"] = p.Thinking
-		}
+		timeoutMs := 0
 		if p.TimeoutSeconds != nil && *p.TimeoutSeconds > 0 {
-			chatParams["timeoutMs"] = *p.TimeoutSeconds * 1000
+			timeoutMs = *p.TimeoutSeconds * 1000
 		}
-		if p.Channel != "" {
-			chatParams["channel"] = p.Channel
-		}
-		if p.To != "" {
-			chatParams["to"] = p.To
-		}
-		if p.ChatType != "" {
-			chatParams["chatType"] = p.ChatType
-		}
-		if p.MessageID != "" {
-			chatParams["messageId"] = p.MessageID
-		}
-		ok, payload, _ := ctx.InvokeMethod("chat.send", chatParams)
-		if ok {
-			if m, ok := payload.(map[string]interface{}); ok {
-				if rid, ok := m["runId"].(string); ok && rid != "" {
-					runID = rid
-				}
-			}
+		rid, ok := handlers.InvokeChatSend(ctx, handlers.ChatSendParams{
+			SessionKey:     sessionKey,
+			Message:        p.Message,
+			IdempotencyKey: runID,
+			Channel:        p.Channel,
+			To:             p.To,
+			ChatType:       p.ChatType,
+			MessageID:      p.MessageID,
+			Thinking:       p.Thinking,
+			TimeoutMs:      timeoutMs,
+		})
+		if ok && rid != "" {
+			return rid
 		}
 		return runID
 	}
@@ -269,17 +256,12 @@ func NewServer(addr string, version string) *Server {
 				if sessionId == "" {
 					sessionId = job.ID
 				}
-				if ctx.InvokeMethod == nil {
-					return
-				}
-				// sessionId 由 cron 服务传入：手动触发为新建 UUID，定时调度为 job.ID
-				params := map[string]interface{}{
-					"sessionKey":     sessionKey,
-					"sessionId":      sessionId,
-					"message":        message,
-					"idempotencyKey": "cron:" + job.ID,
-				}
-				ctx.InvokeMethod("chat.send", params)
+				handlers.InvokeChatSend(ctx, handlers.ChatSendParams{
+					SessionKey:     sessionKey,
+					Message:        message,
+					SessionID:      sessionId,
+					IdempotencyKey: "cron:" + job.ID,
+				})
 			},
 		})
 		cronSvc.Start()
@@ -345,6 +327,10 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /health", s.handleHealth)
 	s.mux.HandleFunc("GET /api/health", s.handleHealth)
 	s.mux.HandleFunc("POST /api/skills/upload", s.handleSkillsUpload)
+	s.mux.HandleFunc("POST /api/employee-skills/upload", s.handleEmployeeSkillsUpload)
+	s.mux.HandleFunc("OPTIONS /api/employee-skills/upload", s.handleEmployeeSkillsUpload)
+	s.mux.HandleFunc("DELETE /api/employee-skills/delete", s.handleEmployeeSkillsDelete)
+	s.mux.HandleFunc("OPTIONS /api/employee-skills/delete", s.handleEmployeeSkillsDelete)
 	//s.mux.HandleFunc("/api/", s.handleAPICatchAll)
 	//s.mux.HandleFunc("POST /v1/chat/completions", s.handleNotImplemented)
 	//s.mux.HandleFunc("POST /v1/responses", s.handleNotImplemented)

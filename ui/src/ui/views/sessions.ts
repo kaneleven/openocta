@@ -14,6 +14,8 @@ export type SessionsProps = {
   includeGlobal: boolean;
   includeUnknown: boolean;
   basePath: string;
+  bulkMode: boolean;
+  selectedKeys: string[];
   onFiltersChange: (next: {
     activeMinutes: string;
     limit: string;
@@ -31,6 +33,11 @@ export type SessionsProps = {
     },
   ) => void;
   onDelete: (key: string) => void;
+  onBulkModeToggle: () => void;
+  onSelectionChange: (key: string, selected: boolean) => void;
+  onSelectAll: (keys: string[]) => void;
+  onClearSelection: () => void;
+  onBulkDelete: (keys: string[]) => void;
 };
 
 const THINK_LEVELS = ["", "off", "minimal", "low", "medium", "high", "xhigh"] as const;
@@ -118,9 +125,18 @@ export function renderSessions(props: SessionsProps) {
           <div class="card-title">${t("sessionsTitle")}</div>
           <div class="card-sub">${t("sessionsSub")}</div>
         </div>
-        <button class="btn" ?disabled=${props.loading} @click=${props.onRefresh}>
-          ${props.loading ? t("commonLoading") : t("commonRefresh")}
-        </button>
+        <div class="row" style="gap: 8px;">
+          <button class="btn" ?disabled=${props.loading} @click=${props.onRefresh}>
+            ${props.loading ? t("commonLoading") : t("commonRefresh")}
+          </button>
+          <button
+            class="btn secondary"
+            ?disabled=${props.loading || rows.length === 0}
+            @click=${props.onBulkModeToggle}
+          >
+            ${props.bulkMode ? "完成" : "批量删除"}
+          </button>
+        </div>
       </div>
 
       <div class="filters" style="margin-top: 14px;">
@@ -181,6 +197,44 @@ export function renderSessions(props: SessionsProps) {
       </div>
 
       ${
+        props.bulkMode && rows.length > 0
+          ? html`
+              <div class="row" style="margin-top: 12px; justify-content: space-between;">
+                <div class="muted">已选 ${props.selectedKeys.length} 个会话</div>
+                <div class="row" style="gap: 8px;">
+                  <button
+                    class="btn"
+                    ?disabled=${props.loading}
+                    @click=${() =>
+                      props.onSelectAll(
+                        rows
+                          .map((row) => row.key)
+                          .filter((key) => key && key !== "agent.main.main"),
+                      )}
+                  >
+                    全部选择
+                  </button>
+                  <button
+                    class="btn"
+                    ?disabled=${props.loading || props.selectedKeys.length === 0}
+                    @click=${props.onClearSelection}
+                  >
+                    全部不选
+                  </button>
+                  <button
+                    class="btn danger"
+                    ?disabled=${props.loading || props.selectedKeys.length === 0}
+                    @click=${() => props.onBulkDelete(props.selectedKeys)}
+                  >
+                    删除已选
+                  </button>
+                </div>
+              </div>
+            `
+          : nothing
+      }
+
+      ${
         props.error
           ? html`<div class="callout danger" style="margin-top: 12px;">${props.error}</div>`
           : nothing
@@ -192,6 +246,7 @@ export function renderSessions(props: SessionsProps) {
 
       <div class="table" style="margin-top: 16px;">
         <div class="table-head">
+          ${props.bulkMode ? html`<div></div>` : nothing}
           <div>${t("sessionsKey")}</div>
           <div>${t("sessionsLabel")}</div>
           <div>${t("sessionsKind")}</div>
@@ -208,7 +263,16 @@ export function renderSessions(props: SessionsProps) {
                 <div class="muted">${t("sessionsNoFound")}</div>
               `
             : rows.map((row) =>
-                renderRow(row, props.basePath, props.onPatch, props.onDelete, props.loading),
+                renderRow(
+                  row,
+                  props.basePath,
+                  props.onPatch,
+                  props.onDelete,
+                  props.loading,
+                  props.bulkMode,
+                  props.selectedKeys,
+                  props.onSelectionChange,
+                ),
               )
         }
       </div>
@@ -222,6 +286,9 @@ function renderRow(
   onPatch: SessionsProps["onPatch"],
   onDelete: SessionsProps["onDelete"],
   disabled: boolean,
+  bulkMode: boolean,
+  selectedKeys: string[],
+  onSelectionChange: SessionsProps["onSelectionChange"],
 ) {
   const updated = row.updatedAt ? formatAgo(row.updatedAt) : "n/a";
   const rawThinking = row.thinkingLevel ?? "";
@@ -242,9 +309,26 @@ function renderRow(
   const chatUrl = canLink
     ? `${pathForTab("chat", basePath)}?session=${encodeURIComponent(row.key)}`
     : null;
+  const isMainSession = row.key === "agent.main.main";
+  const selected = selectedKeys.includes(row.key);
 
   return html`
     <div class="table-row">
+      ${
+        bulkMode
+          ? html`
+              <div>
+                <input
+                  type="checkbox"
+                  .checked=${selected}
+                  ?disabled=${disabled || isMainSession}
+                  @change=${(e: Event) =>
+                    onSelectionChange(row.key, (e.target as HTMLInputElement).checked)}
+                />
+              </div>
+            `
+          : nothing
+      }
       <div class="mono session-key-cell">
         ${canLink ? html`<a href=${chatUrl} class="session-link">${row.key}</a>` : row.key}
         ${showDisplayName ? html`<span class="muted session-key-display-name">${displayName}</span>` : nothing}
