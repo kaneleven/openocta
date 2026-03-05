@@ -206,16 +206,13 @@ func NewServer(addr string, version string) *Server {
 	}
 
 	ctx.HooksAgent = func(p handlers.HooksAgentParams) string {
-		runID := uuid.New().String()
 		sessionKey := strings.TrimSpace(p.SessionKey)
+		runID := uuid.New().String()
+
 		if sessionKey == "" {
 			sessionKey = fmt.Sprintf("hook:%s", runID)
 		}
-		// 与 alert hook 保持一致：sessions.reset + chat.send
-		resetParams := map[string]interface{}{"key": sessionKey}
-		if ok, _, _ := ctx.InvokeMethod("sessions.reset", resetParams); !ok {
-			return runID // 仍返回 runID 便于追踪
-		}
+		// 不再每次重置 session，保留多轮对话上下文
 		timeoutMs := 0
 		if p.TimeoutSeconds != nil && *p.TimeoutSeconds > 0 {
 			timeoutMs = *p.TimeoutSeconds * 1000

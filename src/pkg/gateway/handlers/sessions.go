@@ -1431,11 +1431,38 @@ func loadCombinedSessionStoreForGateway(cfg *config.OpenOctaConfig, env func(str
 	return storePath, combined
 }
 
+// isMainSessionKey returns true for the main/default session key.
+// These keys must never be filtered from sessions.list.
+func isMainSessionKey(key string) bool {
+	if key == "main" {
+		return true
+	}
+	agentID, rest, ok := parseAgentSessionKey(key)
+	return ok && normalizeAgentID(agentID) == "main" && strings.TrimSpace(rest) == "main"
+}
+
+// isCronRunSessionKey returns true for cron run session keys that should be
+// filtered from sessions.list. These are one-off run sessions, not the
+// persistent cron job session (agent:main:cron:<jobId>).
+//
+// Matched formats:
+//   - Legacy: cron:<jobId>:run:<sessionId>
+//   - Current: agent:<agentId>:cron:<jobId>:run:<sessionId>
+//
+// Never filters: agent:main:main, main, or other main/default sessions.
 func isCronRunSessionKey(key string) bool {
-	// Check if key matches pattern: cron:*:run:*
+	// Never filter main/default session
+	if isMainSessionKey(key) {
+		return false
+	}
 	parts := strings.Split(key, ":")
-	if len(parts) >= 4 {
-		return parts[0] == "cron" && parts[2] == "run"
+	// Legacy format: cron:jobId:run:sessionId
+	if len(parts) >= 4 && parts[0] == "cron" && parts[2] == "run" {
+		return true
+	}
+	// Current format: agent:agentId:cron:jobId:run:sessionId
+	if len(parts) >= 6 && strings.ToLower(parts[0]) == "agent" && parts[2] == "cron" && parts[4] == "run" {
+		return true
 	}
 	return false
 }
@@ -1527,18 +1554,27 @@ func listSessionsFromStore(cfg *config.OpenOctaConfig, storePath string, store s
 	}
 
 	// Filter sessions
+	//
+	// Filter order and logic:
+	// 1. Cron run keys: exclude agent:main:cron:<jobId>:run:<sessionId> and legacy cron:jobId:run:sessionId.
+	//    Never exclude agent:main:main or main (main/default session).
+	// 2. Global/unknown: exclude unless includeGlobal/includeUnknown is set.
+	// 3. AgentID: when agentId param is set, only keep sessions for that agent.
+	// 4. SpawnedBy: when spawnedBy param is set (TODO: check entry.SpawnedBy).
+	// 5. Label: when label param is set, only keep matching entry.Label.
+	// 6. Later: search, activeMinutes, limit (applied after mapping to rows).
 	var sessions []struct {
 		key   string
 		entry session.SessionEntry
 	}
 
 	for key, entry := range store {
-		// Filter cron run session keys
+		// 1. Filter cron run session keys (never filters agent:main:main)
 		if isCronRunSessionKey(key) {
 			continue
 		}
 
-		// Filter global/unknown
+		// 2. Filter global/unknown
 		if !includeGlobal && key == "global" {
 			continue
 		}
@@ -1546,7 +1582,7 @@ func listSessionsFromStore(cfg *config.OpenOctaConfig, storePath string, store s
 			continue
 		}
 
-		// Filter by agentId
+		// 3. Filter by agentId
 		if agentID != "" {
 			if key == "global" || key == "unknown" {
 				continue
@@ -1557,7 +1593,7 @@ func listSessionsFromStore(cfg *config.OpenOctaConfig, storePath string, store s
 			}
 		}
 
-		// Filter by spawnedBy
+		// 4. Filter by spawnedBy
 		if spawnedBy != "" {
 			if key == "unknown" || key == "global" {
 				continue
@@ -1565,7 +1601,7 @@ func listSessionsFromStore(cfg *config.OpenOctaConfig, storePath string, store s
 			// TODO: Check entry.SpawnedBy when SessionEntry supports it
 		}
 
-		// Filter by label
+		// 5. Filter by label
 		if label != "" && entry.Label != label {
 			continue
 		}

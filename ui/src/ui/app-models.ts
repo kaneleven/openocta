@@ -243,3 +243,31 @@ export function handleModelsUseModel(host: OpenClawApp, provider: string, modelI
   host.modelsUseModelModalOpen = false;
   host.modelsUseModelModalProvider = null;
 }
+
+export function handleModelsCancelUse(host: OpenClawApp, provider: string) {
+  const current = (host.configForm?.agents as Record<string, unknown>)?.defaults as Record<string, unknown> | undefined;
+  const model = current?.model;
+  const primary = model && typeof model === "object" && !Array.isArray(model)
+    ? (model as Record<string, unknown>).primary
+    : undefined;
+  const currentRef = typeof primary === "string" ? primary : null;
+  if (!currentRef || !currentRef.startsWith(provider + "/")) return;
+  // Backend mergePatch deletes key when patch value is nil; send primary: null to remove it
+  const patch: Record<string, unknown> = {
+    agents: {
+      defaults: {
+        model: { primary: null },
+      },
+    },
+  };
+  const base = cloneConfigObject(host.configForm ?? host.configSnapshot?.config ?? {}) as Record<string, unknown>;
+  const agents = base.agents as Record<string, unknown> | undefined;
+  const defaults = agents?.defaults as Record<string, unknown> | undefined;
+  const modelObj = defaults?.model;
+  if (modelObj && typeof modelObj === "object" && !Array.isArray(modelObj)) {
+    delete (modelObj as Record<string, unknown>).primary;
+  }
+  host.configForm = base;
+  host.configFormDirty = true;
+  saveConfigPatch(host, patch);
+}

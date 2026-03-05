@@ -62,6 +62,7 @@ export type ModelsProps = {
   onUseModelClick: (provider: string) => void;
   onUseModelModalClose: () => void;
   onUseModel: (provider: string, modelId: string) => void;
+  onCancelUse: (provider: string) => void;
 };
 
 function getProviderDisplayName(providerKey: string, provider?: ModelProvider): string {
@@ -151,7 +152,7 @@ export function renderModels(props: ModelsProps) {
                   const hasConfig = !!prov;
                   const modelId = hasConfig ? (prov?.models?.[0]?.id ?? p.defaultModel ?? "(需指定)") : null;
                   const canUse = hasConfig && modelId && modelId !== "(需指定)";
-                  const isCurrent = canUse && current?.provider === p.id && current?.modelId === modelId;
+                  const isProviderCurrent = canUse && current?.provider === p.id;
                   return html`
                     <div
                       class="models-table-row table-row ${props.selectedProvider === p.id ? "list-item-selected" : ""}"
@@ -160,7 +161,7 @@ export function renderModels(props: ModelsProps) {
                     >
                       <div class="models-table-cell" style="font-weight: 500;">
                         ${p.label}
-                        ${isCurrent ? html`<span class="muted" style="font-size: 12px;"> (${t("modelsCurrentDefault")})</span>` : nothing}
+                        ${isProviderCurrent ? html`<span class="muted" style="font-size: 12px;"> (${t("modelsCurrentDefault")})</span>` : nothing}
                       </div>
                       <div class="models-table-cell muted" style="font-size: 13px;">${hasConfig ? modelId : "-"}</div>
                       <div class="models-table-cell muted" style="font-size: 12px;">${prov?.baseUrl ?? p.baseUrl}</div>
@@ -168,7 +169,7 @@ export function renderModels(props: ModelsProps) {
                         ${canUse
                           ? html`
                               <button
-                                class="btn btn--sm ${isCurrent ? "btn-ok" : "primary"}"
+                                class="btn btn--sm ${isProviderCurrent ? "btn-ok" : "primary"}"
                                 ?disabled=${props.saving}
                                 @click=${(e: Event) => {
                                   e.stopPropagation();
@@ -189,6 +190,20 @@ export function renderModels(props: ModelsProps) {
                         >
                           ${t("channelsConfigure")}
                         </button>
+                        ${hasConfig
+                          ? html`
+                              <button
+                                class="btn btn--sm ${isProviderCurrent ? "btn-ok" : ""}"
+                                ?disabled=${props.saving || !isProviderCurrent}
+                                @click=${(e: Event) => {
+                                  e.stopPropagation();
+                                  props.onCancelUse(p.id);
+                                }}
+                              >
+                                ${t("modelsCancelUse")}
+                              </button>
+                            `
+                          : nothing}
                       </div>
                     </div>
                   `;
@@ -199,7 +214,7 @@ export function renderModels(props: ModelsProps) {
                     ([key, provider]) => {
                       const modelId = provider.models?.[0]?.id;
                       const canUse = !!modelId;
-                      const isCurrent = canUse && current?.provider === key && current?.modelId === modelId;
+                      const isProviderCurrent = canUse && current?.provider === key;
                       return html`
                       <div
                         class="models-table-row table-row ${props.selectedProvider === key ? "list-item-selected" : ""}"
@@ -215,7 +230,7 @@ export function renderModels(props: ModelsProps) {
                           ${canUse
                             ? html`
                                 <button
-                                  class="btn btn--sm ${isCurrent ? "btn-ok" : "primary"}"
+                                  class="btn btn--sm ${isProviderCurrent ? "btn-ok" : "primary"}"
                                   ?disabled=${props.saving}
                                   @click=${(e: Event) => {
                                     e.stopPropagation();
@@ -236,6 +251,16 @@ export function renderModels(props: ModelsProps) {
                           >
                             ${t("channelsConfigure")}
                           </button>
+                          <button
+                            class="btn btn--sm ${isProviderCurrent ? "btn-ok" : ""}"
+                            ?disabled=${props.saving || !isProviderCurrent}
+                            @click=${(e: Event) => {
+                              e.stopPropagation();
+                              props.onCancelUse(key);
+                            }}
+                          >
+                            ${t("modelsCancelUse")}
+                          </button>
                         </div>
                       </div>
                     `;
@@ -250,7 +275,7 @@ export function renderModels(props: ModelsProps) {
                   const hasConfig = !!prov;
                   const modelId = hasConfig ? (prov?.models?.[0]?.id ?? p.defaultModel ?? "(需指定)") : null;
                   const canUse = hasConfig && modelId && modelId !== "(需指定)";
-                  const isCurrent = canUse && current?.provider === p.id && current?.modelId === modelId;
+                  const isProviderCurrent = canUse && current?.provider === p.id;
                   return html`
                     <div
                       class="models-provider-card ${props.selectedProvider === p.id ? "list-item-selected" : ""}"
@@ -274,7 +299,7 @@ export function renderModels(props: ModelsProps) {
                         ${canUse
                           ? html`
                               <button
-                                class="btn btn--sm ${isCurrent ? "btn-ok" : "primary"}"
+                                class="btn btn--sm ${isProviderCurrent ? "btn-ok" : "primary"}"
                                 ?disabled=${props.saving}
                                 @click=${(e: Event) => {
                                   e.stopPropagation();
@@ -295,6 +320,20 @@ export function renderModels(props: ModelsProps) {
                         >
                           ${t("channelsConfigure")}
                         </button>
+                        ${hasConfig
+                          ? html`
+                              <button
+                                class="btn btn--sm ${isProviderCurrent ? "btn-ok" : ""}"
+                                ?disabled=${props.saving || !isProviderCurrent}
+                                @click=${(e: Event) => {
+                                  e.stopPropagation();
+                                  props.onCancelUse(p.id);
+                                }}
+                              >
+                                ${t("modelsCancelUse")}
+                              </button>
+                            `
+                          : nothing}
                       </div>
                     </div>
                   `;
@@ -305,7 +344,7 @@ export function renderModels(props: ModelsProps) {
                     ([key, provider]) => {
                       const modelId = provider.models?.[0]?.id;
                       const canUse = !!modelId;
-                      const isCurrent = canUse && current?.provider === key && current?.modelId === modelId;
+                      const isProviderCurrent = canUse && current?.provider === key;
                       return html`
                       <div
                         class="models-provider-card ${props.selectedProvider === key ? "list-item-selected" : ""}"
@@ -329,7 +368,7 @@ export function renderModels(props: ModelsProps) {
                           ${canUse
                             ? html`
                                 <button
-                                  class="btn btn--sm ${isCurrent ? "btn-ok" : "primary"}"
+                                  class="btn btn--sm ${isProviderCurrent ? "btn-ok" : "primary"}"
                                   ?disabled=${props.saving}
                                   @click=${(e: Event) => {
                                     e.stopPropagation();
@@ -349,6 +388,16 @@ export function renderModels(props: ModelsProps) {
                             }}
                           >
                             ${t("channelsConfigure")}
+                          </button>
+                          <button
+                            class="btn btn--sm ${isProviderCurrent ? "btn-ok" : ""}"
+                            ?disabled=${props.saving || !isProviderCurrent}
+                            @click=${(e: Event) => {
+                              e.stopPropagation();
+                              props.onCancelUse(key);
+                            }}
+                          >
+                            ${t("modelsCancelUse")}
                           </button>
                         </div>
                       </div>

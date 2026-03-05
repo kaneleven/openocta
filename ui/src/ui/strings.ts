@@ -171,6 +171,7 @@ type Strings = {
   modelsBaseUrl: string;
   modelsApiKey: string;
   modelsUseAsDefault: string;
+  modelsCancelUse: string;
   modelsSelectModelToUse: string;
   modelsCurrentDefault: string;
   channelsHealth: string;
@@ -977,6 +978,7 @@ const EN: Strings = {
   modelsBaseUrl: "Base URL",
   modelsApiKey: "API Key",
   modelsUseAsDefault: "Use",
+  modelsCancelUse: "Cancel use",
   modelsSelectModelToUse: "Select model to use",
   modelsCurrentDefault: "Current default",
   channelsHealth: "Channel health",
@@ -1776,6 +1778,7 @@ const ZH: Strings = {
   modelsBaseUrl: "Base URL",
   modelsApiKey: "API Key",
   modelsUseAsDefault: "使用",
+  modelsCancelUse: "取消使用",
   modelsSelectModelToUse: "选择要使用的模型",
   modelsCurrentDefault: "当前默认",
   channelsHealth: "通道健康",

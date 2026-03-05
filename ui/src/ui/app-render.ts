@@ -128,6 +128,7 @@ import {
   handleModelsSave,
   handleModelsSelect,
   handleModelsRefresh,
+  handleModelsCancelUse,
   handleModelsUseModel,
   handleModelsUseModelClick,
   handleModelsUseModelModalClose,
@@ -1663,6 +1664,7 @@ export function renderApp(state: AppViewState) {
                 onUseModelClick: (provider) => handleModelsUseModelClick(state, provider),
                 onUseModelModalClose: () => handleModelsUseModelModalClose(state),
                 onUseModel: (provider, modelId) => handleModelsUseModel(state, provider, modelId),
+                onCancelUse: (provider) => handleModelsCancelUse(state, provider),
               })
             : nothing
         }

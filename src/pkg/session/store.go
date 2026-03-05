@@ -74,7 +74,10 @@ func LoadCombinedSessionStore(env func(string) string, agentIDs []string) (store
 				canonical = "agent:" + agentID + ":" + k
 			}
 			store[canonical] = e
-			if e.SessionID != "" {
+			// Only add agent:agentID:sessionID alias when key is bare (e.g. bare sessionID).
+			// Skip when key already has agent: prefix to avoid duplicate like
+			// "agent:main:channel:feishu:oc_xxx" vs "agent:main:channel-feishu-oc_xxx".
+			if e.SessionID != "" && !strings.HasPrefix(k, "agent:") {
 				store["agent:"+agentID+":"+e.SessionID] = e
 			}
 		}
@@ -123,27 +126,21 @@ func UpdateSessionUpdatedAt(agentID, sessionID string, env func(string) string, 
 	}
 
 	// Try to find an existing entry for this session.
-	var foundKey string
+	canonicalKey := "agent:" + id + ":" + sessionID
 	for k, e := range store {
-		if k == sessionID || e.SessionID == sessionID {
+		if k == sessionID || k == canonicalKey || e.SessionID == sessionID {
 			e.UpdatedAt = nowMs
 			if e.SessionID == "" {
 				e.SessionID = sessionID
 			}
 			store[k] = e
-			foundKey = k
-			break
+			return SaveSessionStore(storePath, store)
 		}
 	}
 
-	// If not found, create a minimal entry keyed by sessionID.
-	if foundKey == "" {
-		store[sessionID] = SessionEntry{
-			SessionID:   sessionID,
-			UpdatedAt:   nowMs,
-			SessionFile: "",
-		}
-	}
-
-	return SaveSessionStore(storePath, store)
+	// If not found, do NOT create entry keyed by bare sessionID.
+	// Creating store[sessionID] would produce a duplicate key (e.g. "channel-feishu-oc_xxx")
+	// that differs from the canonical sessionKey (e.g. "agent:main:channel:feishu:oc_xxx").
+	// The entry will be created by updateSessionAfterRun with the correct sessionKey.
+	return nil
 }
