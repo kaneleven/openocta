@@ -540,25 +540,6 @@ export function renderConfig(props: ConfigProps) {
             `,
           )}
         </nav>
-
-        <!-- Mode toggle at bottom -->
-        <div class="config-sidebar__footer">
-          <div class="config-mode-toggle">
-            <button
-              class="config-mode-toggle__btn ${props.formMode === "form" ? "active" : ""}"
-              ?disabled=${props.schemaLoading || !props.schema}
-              @click=${() => props.onFormModeChange("form")}
-            >
-              ${t("configForm")}
-            </button>
-            <button
-              class="config-mode-toggle__btn ${props.formMode === "raw" ? "active" : ""}"
-              @click=${() => props.onFormModeChange("raw")}
-            >
-              ${t("configRaw")}
-            </button>
-          </div>
-        </div>
       </aside>
 
       <!-- Main content -->

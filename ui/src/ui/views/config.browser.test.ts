@@ -133,25 +133,6 @@ describe("config view", () => {
     expect(applyButton?.disabled).toBe(false);
   });
 
-  it("switches mode via the sidebar toggle", () => {
-    const container = document.createElement("div");
-    const onFormModeChange = vi.fn();
-    render(
-      renderConfig({
-        ...baseProps(),
-        onFormModeChange,
-      }),
-      container,
-    );
-
-    const btn = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent?.trim() === "Raw",
-    );
-    expect(btn).toBeTruthy();
-    btn?.click();
-    expect(onFormModeChange).toHaveBeenCalledWith("raw");
-  });
-
   it("switches sections from the sidebar", () => {
     const container = document.createElement("div");
     const onSectionChange = vi.fn();

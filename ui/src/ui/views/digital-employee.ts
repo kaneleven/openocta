@@ -141,12 +141,6 @@ export function renderDigitalEmployee(props: DigitalEmployeeProps) {
                         </button>
                         <button
                           class="btn btn--sm"
-                          @click=${() => props.onToggleEnabled(emp.id, !enabled)}
-                        >
-                          ${enabled ? "禁用" : "启用"}
-                        </button>
-                        <button
-                          class="btn btn--sm"
                           @click=${() => props.onEdit(emp.id)}
                           ?disabled=${emp.builtin}
                         >
