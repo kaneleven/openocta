@@ -353,7 +353,7 @@ export class OpenClawApp extends LitElement {
   @state() skillMessages: Record<string, SkillMessage> = {};
   @state() skillsAddModalOpen = false;
   @state() skillsUploadName = "";
-  @state() skillsUploadFile: File | null = null;
+  @state() skillsUploadFiles: File[] = [];
   @state() skillsUploadError: string | null = null;
   @state() skillsUploadTemplate: string | null = null;
   @state() skillsUploadBusy = false;
@@ -381,7 +381,9 @@ export class OpenClawApp extends LitElement {
   @state() digitalEmployeeCreateError: string | null = null;
   @state() digitalEmployeeCreateBusy = false;
   @state() digitalEmployeeAdvancedOpen = false;
+  @state() digitalEmployeeCreateMcpMode: "builder" | "raw" = "builder";
   @state() digitalEmployeeCreateMcpJson = "";
+  @state() digitalEmployeeCreateMcpItems: import("./views/digital-employee.js").EmployeeMcpItem[] = [];
   @state() digitalEmployeeSkillUploadName = "";
   @state() digitalEmployeeSkillUploadFiles: File[] = [];
   @state() digitalEmployeeSkillUploadError: string | null = null;
@@ -392,6 +394,8 @@ export class OpenClawApp extends LitElement {
   @state() digitalEmployeeEditDescription = "";
   @state() digitalEmployeeEditPrompt = "";
   @state() digitalEmployeeEditMcpJson = "";
+  @state() digitalEmployeeEditMcpMode: "builder" | "raw" = "raw";
+  @state() digitalEmployeeEditMcpItems: import("./views/digital-employee.js").EmployeeMcpItem[] = [];
   @state() digitalEmployeeEditSkillNames: string[] = [];
   @state() digitalEmployeeEditSkillFilesToUpload: File[] = [];
   @state() digitalEmployeeEditSkillsToDelete: string[] = [];

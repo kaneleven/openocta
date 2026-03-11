@@ -43,13 +43,11 @@ export async function approveApproval(
   state: ApprovalsState,
   requestId: string,
   approverId: string,
-  ttlSeconds?: number,
 ) {
   if (!state.client || !state.connected) return;
   await state.client.request("approvals.approve", {
     requestId,
     approverId,
-    ttlSeconds: ttlSeconds ?? 3600,
   });
   await loadApprovalsList(state);
 }

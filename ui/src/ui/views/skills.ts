@@ -73,7 +73,7 @@ export type SkillsProps = {
   messages: SkillMessageMap;
   addModalOpen: boolean;
   uploadName: string;
-  uploadFile: File | null;
+  uploadFiles: File[];
   uploadError: string | null;
   uploadTemplate: string | null;
   uploadBusy: boolean;
@@ -84,7 +84,7 @@ export type SkillsProps = {
   onAddClick: () => void;
   onAddClose: () => void;
   onUploadNameChange: (next: string) => void;
-  onUploadFileChange: (file: File | null) => void;
+  onUploadFilesChange: (files: File[]) => void;
   onUploadSubmit: () => void;
   onToggle: (skillKey: string, enabled: boolean) => void;
   onEdit: (skillKey: string, value: string) => void;
@@ -170,21 +170,44 @@ export function renderSkills(props: SkillsProps) {
                         props.onUploadNameChange((e.target as HTMLInputElement).value)}
                       placeholder=${t("skillsUploadNamePlaceholder")}
                       pattern="[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}"
+                      ?disabled=${props.uploadFiles.length > 1}
                     />
+                    ${
+                      props.uploadFiles.length > 1
+                        ? html`
+                            <div class="muted" style="margin-top: 4px; font-size: 0.9em;">
+                              已选择多个压缩包：将自动从每个文件名提取技能名称（此处无需填写）。
+                            </div>
+                          `
+                        : nothing
+                    }
                   </div>
                   <div class="field" style="margin-top: 12px;">
                     <span>${t("skillsUploadFile")}</span>
                     <input
                       type="file"
                       accept=".md,.zip"
+                      multiple
                       @change=${(e: Event) => {
                         const input = e.target as HTMLInputElement;
-                        props.onUploadFileChange(input.files?.[0] ?? null);
+                        const files = input.files ? Array.from(input.files) : [];
+                        props.onUploadFilesChange(files);
                       }}
                     />
                     <div class="muted" style="margin-top: 4px; font-size: 0.9em;">
                       ${t("skillsUploadFileHint")}
                     </div>
+                    ${
+                      props.uploadFiles.length > 0
+                        ? html`
+                            <div class="row" style="flex-wrap: wrap; gap: 4px; margin-top: 8px;">
+                              ${props.uploadFiles.map(
+                                (f) => html`<span class="chip" style="font-size: 12px;">${f.name}</span>`,
+                              )}
+                            </div>
+                          `
+                        : nothing
+                    }
                   </div>
                   ${
                     props.uploadError
@@ -222,7 +245,7 @@ export function renderSkills(props: SkillsProps) {
                     </button>
                     <button
                       class="btn primary"
-                      ?disabled=${props.uploadBusy || !props.uploadName.trim() || !props.uploadFile}
+                      ?disabled=${props.uploadBusy || props.uploadFiles.length === 0 || (props.uploadFiles.length === 1 && !props.uploadName.trim())}
                       @click=${props.onUploadSubmit}
                     >
                       ${props.uploadBusy ? t("commonLoading") : t("skillsUploadSubmit")}

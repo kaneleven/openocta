@@ -201,7 +201,7 @@ export type AppViewState = {
   skillsBusyKey: string | null;
   skillsAddModalOpen: boolean;
   skillsUploadName: string;
-  skillsUploadFile: File | null;
+  skillsUploadFiles: File[];
   skillsUploadError: string | null;
   skillsUploadTemplate: string | null;
   skillsUploadBusy: boolean;
@@ -280,7 +280,9 @@ export type AppViewState = {
   digitalEmployeeCreateError: string | null;
   digitalEmployeeCreateBusy: boolean;
   digitalEmployeeAdvancedOpen: boolean;
+  digitalEmployeeCreateMcpMode: "builder" | "raw";
   digitalEmployeeCreateMcpJson: string;
+  digitalEmployeeCreateMcpItems: import("./views/digital-employee.js").EmployeeMcpItem[];
   digitalEmployeeSkillUploadName: string;
   digitalEmployeeSkillUploadFiles: File[];
   digitalEmployeeSkillUploadError: string | null;
@@ -291,6 +293,8 @@ export type AppViewState = {
   digitalEmployeeEditDescription: string;
   digitalEmployeeEditPrompt: string;
   digitalEmployeeEditMcpJson: string;
+  digitalEmployeeEditMcpMode: "builder" | "raw";
+  digitalEmployeeEditMcpItems: import("./views/digital-employee.js").EmployeeMcpItem[];
   digitalEmployeeEditSkillNames: string[];
   digitalEmployeeEditSkillFilesToUpload: File[];
   digitalEmployeeEditSkillsToDelete: string[];

@@ -68,6 +68,23 @@ type Strings = {
   navTitleControl: string;
   subtitleSandbox: string;
   subtitleApprovals: string;
+  securitySectionSandbox: string;
+  securitySectionValidator: string;
+  securitySectionApprovalQueue: string;
+  securitySectionSandboxDesc: string;
+  securitySectionValidatorDesc: string;
+  securitySectionApprovalQueueDesc: string;
+  securityApprovalQueueEnabled: string;
+  securityApprovalTimeoutSeconds: string;
+  securityApprovalTimeoutSecondsHint: string;
+  securityApprovalAllow: string;
+  securityApprovalAllowHint: string;
+  securityApprovalAsk: string;
+  securityApprovalAskHint: string;
+  securityApprovalDeny: string;
+  securityApprovalDenyHint: string;
+  securityApprovalBlockOnApproval: string;
+  securityApprovalBlockOnApprovalHint: string;
   // Overview
   overviewGatewayAccess: string;
   overviewGatewayAccessSub: string;
@@ -200,6 +217,7 @@ type Strings = {
   approvalsTTL: string;
   approvalsStatus: string;
   approvalsApprove: string;
+  approvalsWhitelist: string;
   approvalsDeny: string;
   approvalsExpired: string;
   approvalsPending: string;
@@ -922,7 +940,7 @@ const EN: Strings = {
   subtitleDebug: "Gateway snapshots, events, and manual RPC calls.",
   subtitleLogs: "Live tail of the gateway file logs.",
   subtitleLlmTrace: "View LLM trace details for sessions.",
-  subtitleSandbox: "Filesystem, network, commands, and security hooks.",
+  subtitleSandbox: "Sandbox, command validation, and approval queue.",
   subtitleApprovals: "Command approval queue; approve or deny by session.",
   navTitleAgents: "Agents",
   navTitleOverview: "Overview",
@@ -944,7 +962,7 @@ const EN: Strings = {
   navTitleDebug: "Debug",
   navTitleLogs: "Logs",
   navTitleLlmTrace: "LLM Trace",
-  navTitleSandbox: "Sandbox",
+  navTitleSandbox: "Security Policy",
   navTitleApprovals: "Approvals",
   navTitleControl: "Control",
   overviewGatewayAccess: "Gateway Access",
@@ -1065,9 +1083,26 @@ const EN: Strings = {
   sandboxSecretPatternsHint: "One regex per line. Built-in patterns (API keys, tokens, etc.) are also applied.",
   sandboxBanCommands: "Ban commands",
   sandboxBanArguments: "Ban arguments",
-  sandboxBanFragments: "Ban fragments",
+  sandboxBanFragments: "Keyword fuse",
   sandboxSectionConfig: "Sandbox config",
   sandboxSectionApprovals: "Approval queue",
+  securitySectionSandbox: "Sandbox",
+  securitySectionValidator: "命令校验",
+  securitySectionApprovalQueue: "Approval Queue",
+  securitySectionSandboxDesc: "Filesystem + network allowlist and optional resource limits.",
+  securitySectionValidatorDesc: "Command validation rules (ban commands/args/fragments, length limits).",
+  securitySectionApprovalQueueDesc: "Human-in-the-loop approvals for sensitive tool calls; supports session whitelist TTL.",
+  securityApprovalQueueEnabled: "Enable approval queue",
+  securityApprovalTimeoutSeconds: "Approval timeout (seconds)",
+  securityApprovalTimeoutSecondsHint: "Pending approvals become expired after this time (best-effort; used by UI and gateway).",
+  securityApprovalAllow: "Auto-allow commands",
+  securityApprovalAllowHint: "Commands that bypass approval (one per line). Supports glob patterns like 'ls', 'pwd', 'echo *'.",
+  securityApprovalAsk: "Require approval for",
+  securityApprovalAskHint: "Commands that require approval (one per line). Supports glob patterns like 'rm', 'mv *', 'cp *'.",
+  securityApprovalDeny: "Denied commands",
+  securityApprovalDenyHint: "Commands that are always denied (one per line). Supports glob patterns like 'sudo', 'dd', 'mkfs *'.",
+  securityApprovalBlockOnApproval: "Block on approval",
+  securityApprovalBlockOnApprovalHint: "When enabled, the conversation will be blocked until the command is approved. When disabled, an error is returned immediately and the conversation ends.",
   approvalsList: "Approval queue",
   approvalsId: "ID",
   approvalsSessionKey: "Session Key",
@@ -1077,6 +1112,7 @@ const EN: Strings = {
   approvalsTTL: "TTL",
   approvalsStatus: "Status",
   approvalsApprove: "Approve",
+  approvalsWhitelist: "Whitelist",
   approvalsDeny: "Deny",
   approvalsExpired: "Expired",
   approvalsPending: "Pending",
@@ -1792,7 +1828,7 @@ const ZH: Strings = {
   subtitleDebug: "网关快照、事件与手动 RPC 调用。",
   subtitleLogs: "网关日志实时查看。",
   subtitleLlmTrace: "查看会话的 LLM trace 详情。",
-  subtitleSandbox: "文件系统、网络、命令与安全钩子配置。",
+  subtitleSandbox: "Sandbox、命令校验与审批队列。",
   subtitleApprovals: "命令审批队列；按会话批准或拒绝。",
   navTitleAgents: "代理",
   navTitleOverview: "概览",
@@ -1814,7 +1850,7 @@ const ZH: Strings = {
   navTitleDebug: "测试",
   navTitleLogs: "日志",
   navTitleLlmTrace: "LLM Trace",
-  navTitleSandbox: "沙箱",
+  navTitleSandbox: "安全策略",
   navTitleApprovals: "审批队列",
   navTitleControl: "控制",
   overviewGatewayAccess: "网关访问",
@@ -1921,7 +1957,7 @@ const ZH: Strings = {
   sandboxHookAfterTool: "AfterTool",
   sandboxHookAfterAgent: "AfterAgent",
   sandboxHookDescBeforeAgent: "请求验证：拦截会话滥用（DoS）、过长提示、恶意 IP",
-  sandboxHookDescBeforeModel: "即时安全：提示注入、敏感数据泄露、控制字符",
+  sandboxHookDescBeforeModel: "Prompt安全：提示注入、敏感数据泄露、控制字符",
   sandboxHookDescAfterModel: "输出评测：危险命令、秘密泄露、恶意网址",
   sandboxHookDescBeforeTool: "权限校验：工具权限、参数校验、路径校验",
   sandboxHookDescAfterTool: "结果审查：秘密泄露、错误脱敏、输出截断",
@@ -1931,13 +1967,30 @@ const ZH: Strings = {
   sandboxMaxCPUPercent: "最大 CPU 利用率 (%)",
   sandboxMaxMemoryBytes: "最大内存",
   sandboxMaxDiskBytes: "最大磁盘",
-  sandboxSecretPatterns: "秘密泄露检测正则",
+  sandboxSecretPatterns: "脱敏正则检测",
   sandboxSecretPatternsHint: "每行一个正则。系统内置模式（API Key、令牌等）会一并生效。",
   sandboxBanCommands: "禁止命令",
   sandboxBanArguments: "禁止参数",
-  sandboxBanFragments: "禁止片段",
+  sandboxBanFragments: "关键词熔断",
   sandboxSectionConfig: "沙箱配置",
   sandboxSectionApprovals: "审批队列",
+  securitySectionSandbox: "Sandbox",
+  securitySectionValidator: "命令校验",
+  securitySectionApprovalQueue: "审批队列",
+  securitySectionSandboxDesc: "自定义约束文件系统/网络访问边界，并可配置资源限制。为安全，即使关闭也会提供一个默认的sandbox，指定默认目录和危险命令校验",
+  securitySectionValidatorDesc: "对命令进行校验：禁止命令/参数/片段与长度限制。",
+  securitySectionApprovalQueueDesc: "对敏感工具调用进行人工审批，支持按会话 TTL 免审白名单。",
+  securityApprovalQueueEnabled: "启用审批队列",
+  securityApprovalTimeoutSeconds: "许可过期时间（秒）",
+  securityApprovalTimeoutSecondsHint: "待审批请求超过该时长视为过期（尽力实现：用于网关与 UI 展示/拦截）。",
+  securityApprovalAllow: "自动允许命令",
+  securityApprovalAllowHint: "无需审批直接执行的命令（每行一个）。支持 glob 模式，如 'ls'、'pwd'、'echo *'。",
+  securityApprovalAsk: "需要审批的命令",
+  securityApprovalAskHint: "需要人工审批的命令（每行一个）。支持 glob 模式，如 'rm'、'mv *'、'cp *'。",
+  securityApprovalDeny: "禁止执行的命令",
+  securityApprovalDenyHint: "始终禁止执行的命令（每行一个）。支持 glob 模式，如 'sudo'、'dd'、'mkfs *'。",
+  securityApprovalBlockOnApproval: "阻塞等待审批",
+  securityApprovalBlockOnApprovalHint: "开启后，页面对话会被阻塞，只有审批通过后才能继续对话。关闭后，直接报错结束对话，Agent 可提示用户有命令需要审批。",
   approvalsList: "审批队列",
   approvalsId: "ID",
   approvalsSessionKey: "Session Key",
@@ -1947,6 +2000,7 @@ const ZH: Strings = {
   approvalsTTL: "TTL",
   approvalsStatus: "状态",
   approvalsApprove: "批准",
+  approvalsWhitelist: "全部放行",
   approvalsDeny: "拒绝",
   approvalsExpired: "已过期",
   approvalsPending: "待审批",

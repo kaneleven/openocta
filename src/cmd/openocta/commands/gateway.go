@@ -117,7 +117,7 @@ func runGateway(cmd *cobra.Command, _ []string) error {
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != context.Canceled {
 			cmd.PrintErrln("Gateway error:", err)
-			panic(fmt.Sprintf("Gateway error:", err))
+			panic(fmt.Sprintf("Gateway error: %v", err))
 		}
 	}()
 	ctx, stop := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)

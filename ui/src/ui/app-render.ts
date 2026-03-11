@@ -72,6 +72,7 @@ import {
   createDigitalEmployee,
   updateDigitalEmployeeEnabled,
   deleteDigitalEmployee,
+  copyDigitalEmployee,
   getDigitalEmployee,
   updateDigitalEmployee,
 } from "./controllers/digital-employees.ts";
@@ -127,11 +128,14 @@ import {
   handleSandboxToggleEnabled,
   handleSandboxPatch,
   handleSandboxSave,
+  handleValidatorToggleEnabled,
+  handleApprovalQueueToggleEnabled,
 } from "./app-sandbox.ts";
 import { getSandboxFromConfig } from "./controllers/sandbox.ts";
 import {
   loadApprovalsList,
   approveApproval,
+  whitelistApproval,
   denyApproval,
 } from "./controllers/approvals.ts";
 import {
@@ -238,6 +242,36 @@ export function renderApp(state: AppViewState) {
           <div class="pill">
             <span>Version</span>
             <span class="mono">${typeof __APP_VERSION__ === "string" && __APP_VERSION__ ? __APP_VERSION__ : "---"}</span>
+          </div>
+          <div class="pill">
+            <a
+              href="https://github.com/openocta/openocta.git"
+              target="_blank"
+              rel="noreferrer"
+              title="GitHub 仓库（新窗口打开）"
+              class="topbar-link"
+            >
+              <span class="topbar-link__icon" aria-hidden="true">${icons.github}</span>
+              <span>GitHub</span>
+            </a>
+          </div>
+          <div class="pill">
+            <a
+              href="https://www.openocta.com/"
+              target="_blank"
+              rel="noreferrer"
+              title="OpenOcta 官网（新窗口打开）"
+              class="topbar-link"
+            >
+              <img
+                src=${basePath ? `${basePath}/favicon.ico` : "/favicon.ico"}
+                alt=""
+                class="topbar-link__img"
+                width="16"
+                height="16"
+              />
+              <span>官网</span>
+            </a>
           </div>
           <div class="pill">
             <span class="statusDot ${state.connected ? "ok" : ""}"></span>
@@ -1103,7 +1137,7 @@ export function renderApp(state: AppViewState) {
                 onViewModeChange: (mode) => (state.skillsViewMode = mode),
                 addModalOpen: state.skillsAddModalOpen,
                 uploadName: state.skillsUploadName,
-                uploadFile: state.skillsUploadFile,
+                uploadFiles: state.skillsUploadFiles ?? [],
                 uploadError: state.skillsUploadError,
                 uploadTemplate: state.skillsUploadTemplate,
                 uploadBusy: state.skillsUploadBusy,
@@ -1112,36 +1146,78 @@ export function renderApp(state: AppViewState) {
                 onAddClick: () => {
                   state.skillsAddModalOpen = true;
                   state.skillsUploadName = "";
-                  state.skillsUploadFile = null;
+                  state.skillsUploadFiles = [];
                   state.skillsUploadError = null;
                   state.skillsUploadTemplate = null;
                 },
                 onAddClose: () => {
                   state.skillsAddModalOpen = false;
+                  state.skillsUploadName = "";
+                  state.skillsUploadFiles = [];
                   state.skillsUploadError = null;
                   state.skillsUploadTemplate = null;
                 },
                 onUploadNameChange: (next) => (state.skillsUploadName = next),
-                onUploadFileChange: (file) => (state.skillsUploadFile = file),
+                onUploadFilesChange: (files) => {
+                  state.skillsUploadFiles = files ?? [];
+                  // 选择单个文件时，如果没填名称则自动根据文件名填充，仍允许用户覆盖。
+                  if ((files?.length ?? 0) === 1) {
+                    const f = files[0];
+                    const current = state.skillsUploadName?.trim() ?? "";
+                    if (!current) {
+                      const derived = f?.name?.replace(/\.(zip|md)$/i, "").trim();
+                      state.skillsUploadName = derived ?? "";
+                    }
+                  } else if ((files?.length ?? 0) > 1) {
+                    state.skillsUploadName = "";
+                  }
+                },
                 onUploadSubmit: async () => {
-                  if (!state.skillsUploadName.trim() || !state.skillsUploadFile) return;
+                  const files = state.skillsUploadFiles ?? [];
+                  if (files.length === 0) return;
+                  if (files.length === 1 && !state.skillsUploadName.trim()) return;
                   state.skillsUploadBusy = true;
                   state.skillsUploadError = null;
                   state.skillsUploadTemplate = null;
-                  const result = await uploadSkill(
-                    { ...state, gatewayUrl: state.settings.gatewayUrl },
-                    state.skillsUploadName.trim(),
-                    state.skillsUploadFile,
-                  );
+                  const deriveName = (fileName: string) =>
+                    fileName
+                      .trim()
+                      .replace(/\.tar\.gz$/i, "")
+                      .replace(/\.tgz$/i, "")
+                      .replace(/\.zip$/i, "")
+                      .replace(/\.md$/i, "")
+                      .trim();
+                  let result: { ok: boolean; error?: string; template?: string } = { ok: true };
+                  for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const name =
+                      files.length === 1
+                        ? state.skillsUploadName.trim()
+                        : deriveName(file.name) || "";
+                    if (!name) {
+                      state.skillsUploadError = `无法从文件名提取技能名称：${file.name}`;
+                      result = { ok: false, error: state.skillsUploadError };
+                      break;
+                    }
+                    result = await uploadSkill(
+                      { ...state, gatewayUrl: state.settings.gatewayUrl },
+                      name,
+                      file,
+                    );
+                    if (!result.ok) {
+                      state.skillsUploadError =
+                        (files.length > 1 ? `上传 ${file.name} 失败：` : "") +
+                        (result.error ?? "Upload failed");
+                      state.skillsUploadTemplate = result.template ?? null;
+                      break;
+                    }
+                  }
                   state.skillsUploadBusy = false;
                   if (result.ok) {
                     state.skillsAddModalOpen = false;
                     state.skillsUploadName = "";
-                    state.skillsUploadFile = null;
+                    state.skillsUploadFiles = [];
                     loadSkills(state, { clearMessages: true });
-                  } else {
-                    state.skillsUploadError = result.error ?? "Upload failed";
-                    state.skillsUploadTemplate = result.template ?? null;
                   }
                 },
                 onToggle: (key, enabled) => updateSkillEnabled(state, key, enabled),
@@ -1241,6 +1317,8 @@ export function renderApp(state: AppViewState) {
                   {},
                 saving: state.configSaving,
                 onToggleEnabled: () => handleSandboxToggleEnabled(state),
+                onToggleValidatorEnabled: () => handleValidatorToggleEnabled(state),
+                onToggleApprovalEnabled: () => handleApprovalQueueToggleEnabled(state),
                 onPatch: (path, value) => {
                   if (!state.sandboxForm) {
                     state.sandboxForm = syncSandboxFromConfig(state) ?? {};
@@ -1256,8 +1334,8 @@ export function renderApp(state: AppViewState) {
                 approvalsResult: state.approvalsResult,
                 approvalsError: state.approvalsError,
                 onApprovalsRefresh: () => loadApprovalsList(state),
-                onApprove: (requestId, ttlSeconds) =>
-                  approveApproval(state, requestId, "ui", ttlSeconds),
+                onApprove: (requestId) =>
+                  approveApproval(state, requestId, "ui"),
                 onDeny: (requestId, reason) =>
                   denyApproval(state, requestId, "ui", reason),
                 pathForTab: (tab) => pathForTab(tab, state.basePath),
@@ -1439,15 +1517,74 @@ export function renderApp(state: AppViewState) {
                 createError: state.digitalEmployeeCreateError,
                 createBusy: state.digitalEmployeeCreateBusy,
                 advancedOpen: state.digitalEmployeeAdvancedOpen,
+                createMcpMode: state.digitalEmployeeCreateMcpMode,
                 mcpJson: state.digitalEmployeeCreateMcpJson,
+                mcpItems: state.digitalEmployeeCreateMcpItems ?? [],
                 onFilterChange: (next) => {
                   state.digitalEmployeesFilter = next;
                 },
                 onViewModeChange: (mode) => {
                   state.digitalEmployeesViewMode = mode;
                 },
+                onCopy: async (employeeId) => {
+                  await copyDigitalEmployee(state, employeeId);
+                },
                 onMcpJsonChange: (value) => {
                   state.digitalEmployeeCreateMcpJson = value;
+                },
+                onMcpModeChange: (mode) => {
+                  state.digitalEmployeeCreateMcpMode = mode;
+                },
+                onMcpAddItem: () => {
+                  const next = state.digitalEmployeeCreateMcpItems ?? [];
+                  state.digitalEmployeeCreateMcpItems = [
+                    ...next,
+                    {
+                      id: crypto.randomUUID(),
+                      key: "",
+                      editMode: "form",
+                      connectionType: "stdio",
+                      draft: { command: "npx", args: [], env: {} },
+                      rawJson: "{}",
+                      rawError: null,
+                      collapsed: false,
+                    },
+                  ];
+                },
+                onMcpRemoveItem: (id) => {
+                  state.digitalEmployeeCreateMcpItems = (state.digitalEmployeeCreateMcpItems ?? []).filter(
+                    (it) => it.id !== id,
+                  );
+                },
+                onMcpCollapsedChange: (id, collapsed) => {
+                  state.digitalEmployeeCreateMcpItems = (state.digitalEmployeeCreateMcpItems ?? []).map((it) =>
+                    it.id === id ? { ...it, collapsed } : it,
+                  );
+                },
+                onMcpKeyChange: (id, key) => {
+                  state.digitalEmployeeCreateMcpItems = (state.digitalEmployeeCreateMcpItems ?? []).map((it) =>
+                    it.id === id ? { ...it, key } : it,
+                  );
+                },
+                onMcpEditModeChange: (id, mode) => {
+                  state.digitalEmployeeCreateMcpItems = (state.digitalEmployeeCreateMcpItems ?? []).map((it) =>
+                    it.id === id ? { ...it, editMode: mode } : it,
+                  );
+                },
+                onMcpConnectionTypeChange: (id, type) => {
+                  state.digitalEmployeeCreateMcpItems = (state.digitalEmployeeCreateMcpItems ?? []).map((it) =>
+                    it.id === id ? { ...it, connectionType: type } : it,
+                  );
+                },
+                onMcpFormPatch: (id, patch) => {
+                  state.digitalEmployeeCreateMcpItems = (state.digitalEmployeeCreateMcpItems ?? []).map((it) =>
+                    it.id === id ? { ...it, draft: { ...(it.draft ?? {}), ...(patch ?? {}) } } : it,
+                  );
+                },
+                onMcpRawChange: (id, json) => {
+                  state.digitalEmployeeCreateMcpItems = (state.digitalEmployeeCreateMcpItems ?? []).map((it) =>
+                    it.id === id ? { ...it, rawJson: json, rawError: null } : it,
+                  );
                 },
                 skillUploadName: state.digitalEmployeeSkillUploadName,
                 skillUploadFiles: state.digitalEmployeeSkillUploadFiles ?? [],
@@ -1455,7 +1592,9 @@ export function renderApp(state: AppViewState) {
                 onCreateOpen: () => {
                   state.digitalEmployeeCreateModalOpen = true;
                   state.digitalEmployeeAdvancedOpen = false;
+                  state.digitalEmployeeCreateMcpMode = "builder";
                   state.digitalEmployeeCreateMcpJson = "";
+                  state.digitalEmployeeCreateMcpItems = [];
                   state.digitalEmployeeSkillUploadName = "";
                   state.digitalEmployeeSkillUploadFiles = [];
                   state.digitalEmployeeSkillUploadError = null;
@@ -1465,7 +1604,9 @@ export function renderApp(state: AppViewState) {
                   state.digitalEmployeeCreateModalOpen = false;
                   state.digitalEmployeeCreateError = null;
                   state.digitalEmployeeAdvancedOpen = false;
+                  state.digitalEmployeeCreateMcpMode = "builder";
                   state.digitalEmployeeCreateMcpJson = "";
+                  state.digitalEmployeeCreateMcpItems = [];
                   state.digitalEmployeeSkillUploadName = "";
                   state.digitalEmployeeSkillUploadFiles = [];
                   state.digitalEmployeeSkillUploadError = null;
@@ -1480,6 +1621,70 @@ export function renderApp(state: AppViewState) {
                   state.digitalEmployeeCreatePrompt = value;
                 },
                 onCreateSubmit: async () => {
+                  // 将点选配置的 MCP 条目汇总为 JSON（与原 mcp.servers 结构一致）。
+                  if (state.digitalEmployeeCreateMcpMode === "builder") {
+                    const items = state.digitalEmployeeCreateMcpItems ?? [];
+                    const servers: Record<string, unknown> = {};
+                    const seen = new Set<string>();
+                    let firstError: string | null = null;
+                    const nextItems = items.map((it) => ({ ...it, rawError: null as string | null }));
+                    for (let i = 0; i < nextItems.length; i++) {
+                      const it = nextItems[i];
+                      const key = it.key?.trim() ?? "";
+                      if (!key) {
+                        continue;
+                      }
+                      if (seen.has(key)) {
+                        firstError ??= `MCP key 重复：${key}`;
+                        continue;
+                      }
+                      seen.add(key);
+                      if (it.editMode === "raw") {
+                        const raw = it.rawJson?.trim() ?? "";
+                        if (!raw) continue;
+                        try {
+                          const parsed = JSON.parse(raw) as unknown;
+                          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+                            it.rawError = "JSON 必须是对象";
+                            firstError ??= `MCP ${key} 的 JSON 无效`;
+                            continue;
+                          }
+                          servers[key] = parsed;
+                        } catch {
+                          it.rawError = "JSON 格式无效";
+                          firstError ??= `MCP ${key} 的 JSON 无效`;
+                          continue;
+                        }
+                      } else {
+                        const entry = it.draft ?? {};
+                        // 轻量校验：必须满足其连接类型的必要字段
+                        if (it.connectionType === "stdio" && !(entry as { command?: string }).command?.trim()) {
+                          firstError ??= `MCP ${key} 缺少 command`;
+                          continue;
+                        }
+                        if (it.connectionType === "url" && !(entry as { url?: string }).url?.trim()) {
+                          firstError ??= `MCP ${key} 缺少 url`;
+                          continue;
+                        }
+                        if (
+                          it.connectionType === "service" &&
+                          (!(entry as { service?: string }).service?.trim() ||
+                            !(entry as { serviceUrl?: string }).serviceUrl?.trim())
+                        ) {
+                          firstError ??= `MCP ${key} 缺少 service/serviceUrl`;
+                          continue;
+                        }
+                        servers[key] = entry;
+                      }
+                    }
+                    state.digitalEmployeeCreateMcpItems = nextItems;
+                    state.digitalEmployeeCreateMcpJson =
+                      Object.keys(servers).length > 0 ? JSON.stringify(servers, null, 2) : "";
+                    if (firstError) {
+                      state.digitalEmployeeCreateError = firstError;
+                      return;
+                    }
+                  }
                   await createDigitalEmployee(state);
                   if (!state.digitalEmployeeCreateError) {
                     state.digitalEmployeeCreateModalOpen = false;
@@ -1545,6 +1750,42 @@ export function renderApp(state: AppViewState) {
                     state.digitalEmployeesError = "无法加载员工详情";
                     return;
                   }
+                  const buildEditMcpItems = (servers: Record<string, unknown> | undefined) => {
+                    const items: import("./views/digital-employee.js").EmployeeMcpItem[] = [];
+                    if (!servers || typeof servers !== "object") return items;
+                    for (const [key, value] of Object.entries(servers)) {
+                      const k = String(key ?? "").trim();
+                      if (!k) continue;
+                      const v = value as Record<string, unknown>;
+                      const isObj = v && typeof v === "object" && !Array.isArray(v);
+                      const connectionType: "stdio" | "url" | "service" =
+                        isObj && typeof v.url === "string" && v.url.trim()
+                          ? "url"
+                          : isObj && typeof v.service === "string" && v.service.trim()
+                            ? "service"
+                            : "stdio";
+                      const isForm =
+                        isObj &&
+                        ((connectionType === "stdio" && typeof v.command === "string" && v.command.trim()) ||
+                          (connectionType === "url" && typeof v.url === "string" && v.url.trim()) ||
+                          (connectionType === "service" &&
+                            typeof v.service === "string" &&
+                            v.service.trim() &&
+                            typeof v.serviceUrl === "string" &&
+                            v.serviceUrl.trim()));
+                      items.push({
+                        id: crypto.randomUUID(),
+                        key: k,
+                        editMode: isForm ? "form" : "raw",
+                        connectionType,
+                        draft: isForm ? (v as any) : { command: "npx", args: [], env: {} },
+                        rawJson: isObj ? JSON.stringify(v, null, 2) : "{}",
+                        rawError: null,
+                        collapsed: true,
+                      });
+                    }
+                    return items;
+                  };
                   state.digitalEmployeeEditModalOpen = true;
                   state.digitalEmployeeEditId = manifest.id;
                   state.digitalEmployeeEditName = manifest.name || manifest.id;
@@ -1554,6 +1795,8 @@ export function renderApp(state: AppViewState) {
                     manifest.mcpServers && Object.keys(manifest.mcpServers).length > 0
                       ? JSON.stringify(manifest.mcpServers, null, 2)
                       : "";
+                  state.digitalEmployeeEditMcpMode = "builder";
+                  state.digitalEmployeeEditMcpItems = buildEditMcpItems(manifest.mcpServers);
                   state.digitalEmployeeEditSkillNames =
                     (emp?.skillNames ?? emp?.skillIds ?? manifest.skillIds ?? []) as string[];
                   state.digitalEmployeeEditSkillFilesToUpload = [];
@@ -1567,6 +1810,60 @@ export function renderApp(state: AppViewState) {
                 editDescription: state.digitalEmployeeEditDescription,
                 editPrompt: state.digitalEmployeeEditPrompt,
                 editMcpJson: state.digitalEmployeeEditMcpJson,
+                editMcpMode: state.digitalEmployeeEditMcpMode,
+                editMcpItems: state.digitalEmployeeEditMcpItems ?? [],
+                onEditMcpModeChange: (mode) => {
+                  state.digitalEmployeeEditMcpMode = mode;
+                },
+                onEditMcpAddItem: () => {
+                  const next = state.digitalEmployeeEditMcpItems ?? [];
+                  state.digitalEmployeeEditMcpItems = [
+                    ...next,
+                    {
+                      id: crypto.randomUUID(),
+                      key: "",
+                      editMode: "form",
+                      connectionType: "stdio",
+                      draft: { command: "npx", args: [], env: {} },
+                      rawJson: "{}",
+                      rawError: null,
+                      collapsed: false,
+                    },
+                  ];
+                },
+                onEditMcpRemoveItem: (id) => {
+                  state.digitalEmployeeEditMcpItems = (state.digitalEmployeeEditMcpItems ?? []).filter((it) => it.id !== id);
+                },
+                onEditMcpCollapsedChange: (id, collapsed) => {
+                  state.digitalEmployeeEditMcpItems = (state.digitalEmployeeEditMcpItems ?? []).map((it) =>
+                    it.id === id ? { ...it, collapsed } : it,
+                  );
+                },
+                onEditMcpKeyChange: (id, key) => {
+                  state.digitalEmployeeEditMcpItems = (state.digitalEmployeeEditMcpItems ?? []).map((it) =>
+                    it.id === id ? { ...it, key } : it,
+                  );
+                },
+                onEditMcpEditModeChange: (id, mode) => {
+                  state.digitalEmployeeEditMcpItems = (state.digitalEmployeeEditMcpItems ?? []).map((it) =>
+                    it.id === id ? { ...it, editMode: mode } : it,
+                  );
+                },
+                onEditMcpConnectionTypeChange: (id, type) => {
+                  state.digitalEmployeeEditMcpItems = (state.digitalEmployeeEditMcpItems ?? []).map((it) =>
+                    it.id === id ? { ...it, connectionType: type } : it,
+                  );
+                },
+                onEditMcpFormPatch: (id, patch) => {
+                  state.digitalEmployeeEditMcpItems = (state.digitalEmployeeEditMcpItems ?? []).map((it) =>
+                    it.id === id ? { ...it, draft: { ...(it.draft ?? {}), ...(patch ?? {}) } } : it,
+                  );
+                },
+                onEditMcpRawChange: (id, json) => {
+                  state.digitalEmployeeEditMcpItems = (state.digitalEmployeeEditMcpItems ?? []).map((it) =>
+                    it.id === id ? { ...it, rawJson: json, rawError: null } : it,
+                  );
+                },
                 editSkillNames: state.digitalEmployeeEditSkillNames ?? [],
                 editSkillFilesToUpload: state.digitalEmployeeEditSkillFilesToUpload ?? [],
                 editSkillsToDelete: state.digitalEmployeeEditSkillsToDelete ?? [],
@@ -1576,6 +1873,8 @@ export function renderApp(state: AppViewState) {
                   if (state.digitalEmployeeEditBusy) return;
                   state.digitalEmployeeEditModalOpen = false;
                   state.digitalEmployeeEditError = null;
+                  state.digitalEmployeeEditMcpMode = "raw";
+                  state.digitalEmployeeEditMcpItems = [];
                 },
                 onEditDescriptionChange: (v) => {
                   state.digitalEmployeeEditDescription = v;
@@ -1601,6 +1900,66 @@ export function renderApp(state: AppViewState) {
                   ).filter((n) => n !== name);
                 },
                 onEditSubmit: async () => {
+                  // 将点选配置的 MCP 条目汇总为 JSON（与原 mcp.servers 结构一致）。
+                  if (state.digitalEmployeeEditMcpMode === "builder") {
+                    const items = state.digitalEmployeeEditMcpItems ?? [];
+                    const servers: Record<string, unknown> = {};
+                    const seen = new Set<string>();
+                    let firstError: string | null = null;
+                    const nextItems = items.map((it) => ({ ...it, rawError: null as string | null }));
+                    for (let i = 0; i < nextItems.length; i++) {
+                      const it = nextItems[i];
+                      const key = it.key?.trim() ?? "";
+                      if (!key) continue;
+                      if (seen.has(key)) {
+                        firstError ??= `MCP key 重复：${key}`;
+                        continue;
+                      }
+                      seen.add(key);
+                      if (it.editMode === "raw") {
+                        const raw = it.rawJson?.trim() ?? "";
+                        if (!raw) continue;
+                        try {
+                          const parsed = JSON.parse(raw) as unknown;
+                          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+                            it.rawError = "JSON 必须是对象";
+                            firstError ??= `MCP ${key} 的 JSON 无效`;
+                            continue;
+                          }
+                          servers[key] = parsed;
+                        } catch {
+                          it.rawError = "JSON 格式无效";
+                          firstError ??= `MCP ${key} 的 JSON 无效`;
+                          continue;
+                        }
+                      } else {
+                        const entry = it.draft ?? {};
+                        if (it.connectionType === "stdio" && !(entry as { command?: string }).command?.trim()) {
+                          firstError ??= `MCP ${key} 缺少 command`;
+                          continue;
+                        }
+                        if (it.connectionType === "url" && !(entry as { url?: string }).url?.trim()) {
+                          firstError ??= `MCP ${key} 缺少 url`;
+                          continue;
+                        }
+                        if (
+                          it.connectionType === "service" &&
+                          (!(entry as { service?: string }).service?.trim() ||
+                            !(entry as { serviceUrl?: string }).serviceUrl?.trim())
+                        ) {
+                          firstError ??= `MCP ${key} 缺少 service/serviceUrl`;
+                          continue;
+                        }
+                        servers[key] = entry;
+                      }
+                    }
+                    state.digitalEmployeeEditMcpItems = nextItems;
+                    state.digitalEmployeeEditMcpJson = Object.keys(servers).length > 0 ? JSON.stringify(servers, null, 2) : "";
+                    if (firstError) {
+                      state.digitalEmployeeEditError = firstError;
+                      return;
+                    }
+                  }
                   await updateDigitalEmployee(state);
                   if (!state.digitalEmployeeEditError) {
                     state.digitalEmployeeEditModalOpen = false;

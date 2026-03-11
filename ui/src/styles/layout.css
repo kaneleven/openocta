@@ -190,6 +190,55 @@
   height: 12px;
 }
 
+.topbar-status .pill a.topbar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.topbar-status .pill a.topbar-link:hover {
+  text-decoration: underline;
+}
+
+.topbar-link__icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+}
+
+.topbar-link__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.topbar-link__img {
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+/* Security policy section help icon */
+.security-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  color: #ffffff;
+  border: none;
+  background: #000000;
+}
+
+.security-help:hover {
+  background: #222222;
+}
+
 /* ===========================================
    Navigation Sidebar
    =========================================== */
@@ -206,6 +255,28 @@
     padding var(--shell-focus-duration) var(--shell-focus-ease),
     opacity var(--shell-focus-duration) var(--shell-focus-ease);
   min-height: 0;
+}
+
+/* Beta badge for nav items */
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 6px;
+  margin-left: 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 16px;
+  vertical-align: middle;
+  user-select: none;
+}
+
+.nav-badge--beta {
+  color: #4a3a00;
+  background: #ffd24a;
+  border: 1px solid rgba(0, 0, 0, 0.12);
 }
 
 .nav::-webkit-scrollbar {

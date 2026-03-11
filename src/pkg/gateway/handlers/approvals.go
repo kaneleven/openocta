@@ -7,83 +7,99 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cexll/agentsdk-go/pkg/security"
 	"github.com/openocta/openocta/pkg/config"
 	"github.com/openocta/openocta/pkg/gateway/protocol"
 	"github.com/openocta/openocta/pkg/paths"
+	octasecurity "github.com/openocta/openocta/pkg/security"
 )
 
-const approvalQueueFilename = "queue.json"
-
-// approvalEntry is the stored shape of one approval request.
-type approvalEntry struct {
-	ID         string `json:"id"`
-	SessionID  string `json:"sessionId"`
-	SessionKey string `json:"sessionKey,omitempty"`
-	Command    string `json:"command"`
-	CreatedAt  int64  `json:"createdAt"`
-	TimeoutAt  *int64 `json:"timeoutAt,omitempty"`
-	TTLSeconds *int   `json:"ttlSeconds,omitempty"`
-	Status     string `json:"status"` // "pending" | "approved" | "denied" | "expired"
-	ApproverID string `json:"approverId,omitempty"`
-	DenyReason string `json:"denyReason,omitempty"`
-	ResolvedAt *int64 `json:"resolvedAt,omitempty"`
+type approvalSnapshot struct {
+	Records   []approvalRecord     `json:"records"`
+	Whitelist map[string]time.Time `json:"whitelist"`
 }
 
-func resolveApprovalStorePath(cfg *config.OpenOctaConfig, env func(string) string) string {
-	if cfg != nil && cfg.Sandbox != nil && cfg.Sandbox.ApprovalStore != nil && strings.TrimSpace(*cfg.Sandbox.ApprovalStore) != "" {
-		return strings.TrimSpace(*cfg.Sandbox.ApprovalStore)
+// approvalRecord mirrors agentsdk-go security.ApprovalRecord JSON fields.
+type approvalRecord struct {
+	ID           string     `json:"id"`
+	SessionID    string     `json:"session_id"`
+	Command      string     `json:"command"`
+	Paths        []string   `json:"paths"`
+	State        string     `json:"state"` // pending/approved/denied
+	RequestedAt  time.Time  `json:"requested_at"`
+	ApprovedAt   *time.Time `json:"approved_at,omitempty"`
+	Approver     string     `json:"approver,omitempty"`
+	Reason       string     `json:"reason,omitempty"`
+	ExpiresAt    *time.Time `json:"expires_at,omitempty"`
+	AutoApproved bool       `json:"auto_approved"`
+}
+
+func resolveApprovalStoreFile(cfg *config.OpenOctaConfig, env func(string) string) (string, int) {
+	timeoutSeconds := 300
+	var (
+		queueCfg      *config.SandboxApprovalQueue
+		approvalStore *string
+	)
+	if cfg != nil && cfg.Security != nil {
+		queueCfg = cfg.Security.ApprovalQueue
+		if cfg.Security.Sandbox != nil {
+			approvalStore = cfg.Security.Sandbox.ApprovalStore
+		}
+	}
+	if queueCfg != nil && queueCfg.TimeoutSeconds != nil && *queueCfg.TimeoutSeconds > 0 {
+		timeoutSeconds = *queueCfg.TimeoutSeconds
+	}
+	if approvalStore != nil && strings.TrimSpace(*approvalStore) != "" {
+		p := strings.TrimSpace(*approvalStore)
+		if !strings.HasSuffix(strings.ToLower(p), ".json") {
+			return filepath.Join(p, "approvals.json"), timeoutSeconds
+		}
+		return p, timeoutSeconds
 	}
 	stateDir := paths.ResolveStateDir(env)
-	return filepath.Join(stateDir, "agents", "approvals")
+	return filepath.Join(stateDir, "agents", "approvals", "approvals.json"), timeoutSeconds
 }
 
-func loadApprovalQueue(storePath string) ([]approvalEntry, error) {
-	path := filepath.Join(storePath, approvalQueueFilename)
+func loadApprovalSnapshot(path string) (*approvalSnapshot, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil
+			return &approvalSnapshot{Records: nil, Whitelist: map[string]time.Time{}}, nil
 		}
 		return nil, err
 	}
-	var entries []approvalEntry
-	if err := json.Unmarshal(data, &entries); err != nil {
+	var snap approvalSnapshot
+	if err := json.Unmarshal(data, &snap); err != nil {
 		return nil, err
 	}
-	return entries, nil
+	if snap.Whitelist == nil {
+		snap.Whitelist = map[string]time.Time{}
+	}
+	return &snap, nil
 }
 
-func saveApprovalQueue(storePath string, entries []approvalEntry) error {
-	if err := os.MkdirAll(storePath, 0755); err != nil {
-		return err
+func toListEntry(rec approvalRecord, now time.Time, timeoutSeconds int) map[string]interface{} {
+	createdAt := rec.RequestedAt
+	timeoutAt := createdAt.Add(time.Duration(timeoutSeconds) * time.Second)
+	status := rec.State
+	if status == string(security.ApprovalPending) && timeoutSeconds > 0 && now.After(timeoutAt) {
+		status = "expired"
 	}
-	path := filepath.Join(storePath, approvalQueueFilename)
-	data, err := json.MarshalIndent(entries, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, data, 0644)
-}
 
-func toListEntry(e approvalEntry, now int64) map[string]interface{} {
 	out := map[string]interface{}{
-		"id":        e.ID,
-		"sessionId": e.SessionID,
-		"command":   e.Command,
-		"createdAt": e.CreatedAt,
-		"status":    e.Status,
+		"id":        rec.ID,
+		"sessionId": rec.SessionID,
+		"command":   rec.Command,
+		"createdAt": createdAt.UnixMilli(),
+		"timeoutAt": timeoutAt.UnixMilli(),
+		"status":    status,
 	}
-	if e.SessionKey != "" {
-		out["sessionKey"] = e.SessionKey
-	}
-	if e.TimeoutAt != nil {
-		out["timeoutAt"] = *e.TimeoutAt
-		if *e.TimeoutAt < now && e.Status == "pending" {
-			out["status"] = "expired"
+	if rec.ExpiresAt != nil && rec.State == string(security.ApprovalApproved) {
+		ttl := int(rec.ExpiresAt.Sub(now).Seconds())
+		if ttl < 0 {
+			ttl = 0
 		}
-	}
-	if e.TTLSeconds != nil {
-		out["ttlSeconds"] = *e.TTLSeconds
+		out["ttlSeconds"] = ttl
 	}
 	return out
 }
@@ -95,9 +111,9 @@ func ApprovalsListHandler(opts HandlerOpts) error {
 		// Prefer OS env for path resolution
 		return os.Getenv(k)
 	}
-	storePath := resolveApprovalStorePath(cfg, env)
+	storeFile, timeoutSeconds := resolveApprovalStoreFile(cfg, env)
 
-	entries, err := loadApprovalQueue(storePath)
+	snap, err := loadApprovalSnapshot(storeFile)
 	if err != nil {
 		opts.Respond(false, nil, &protocol.ErrorShape{
 			Code:    protocol.ErrCodeInternal,
@@ -106,24 +122,24 @@ func ApprovalsListHandler(opts HandlerOpts) error {
 		return nil
 	}
 
-	now := time.Now().UnixMilli()
-	list := make([]map[string]interface{}, 0, len(entries))
-	for _, e := range entries {
-		list = append(list, toListEntry(e, now))
+	now := time.Now()
+	list := make([]map[string]interface{}, 0, len(snap.Records))
+	for _, rec := range snap.Records {
+		list = append(list, toListEntry(rec, now, timeoutSeconds))
 	}
 
 	opts.Respond(true, map[string]interface{}{
-		"storePath": storePath,
+		"storePath": storeFile,
 		"entries":   list,
 	}, nil, nil)
 	return nil
 }
 
 // ApprovalsApproveHandler handles "approvals.approve".
+// This approves the request WITHOUT adding to whitelist (ttl=0).
 func ApprovalsApproveHandler(opts HandlerOpts) error {
 	requestID, _ := opts.Params["requestId"].(string)
 	approverID, _ := opts.Params["approverId"].(string)
-	ttlSeconds, _ := opts.Params["ttlSeconds"].(float64)
 	if requestID == "" {
 		opts.Respond(false, nil, &protocol.ErrorShape{
 			Code:    protocol.ErrCodeInvalidRequest,
@@ -134,45 +150,37 @@ func ApprovalsApproveHandler(opts HandlerOpts) error {
 
 	cfg := loadConfigFromContext(opts.Context)
 	env := func(k string) string { return os.Getenv(k) }
-	storePath := resolveApprovalStorePath(cfg, env)
-
-	entries, err := loadApprovalQueue(storePath)
+	storeFile, timeoutSeconds := resolveApprovalStoreFile(cfg, env)
+	snap, err := loadApprovalSnapshot(storeFile)
 	if err != nil {
-		opts.Respond(false, nil, &protocol.ErrorShape{
-			Code:    protocol.ErrCodeInternal,
-			Message: err.Error(),
-		}, nil)
+		opts.Respond(false, nil, &protocol.ErrorShape{Code: protocol.ErrCodeInternal, Message: err.Error()}, nil)
 		return nil
 	}
-
-	found := false
-	now := time.Now().Unix()
-	for i := range entries {
-		if entries[i].ID == requestID && entries[i].Status == "pending" {
-			entries[i].Status = "approved"
-			entries[i].ApproverID = approverID
-			t := now
-			entries[i].ResolvedAt = &t
-			if ttlSeconds > 0 {
-				ttl := int(ttlSeconds)
-				entries[i].TTLSeconds = &ttl
+	now := time.Now()
+	for _, rec := range snap.Records {
+		if rec.ID == requestID && rec.State == string(security.ApprovalPending) && timeoutSeconds > 0 {
+			if now.After(rec.RequestedAt.Add(time.Duration(timeoutSeconds) * time.Second)) {
+				opts.Respond(false, nil, &protocol.ErrorShape{
+					Code:    protocol.ErrCodeInvalidRequest,
+					Message: "approval request expired",
+				}, nil)
+				return nil
 			}
-			found = true
 			break
 		}
 	}
 
-	if !found {
-		opts.Respond(false, nil, &protocol.ErrorShape{
-			Code:    protocol.ErrCodeNotFound,
-			Message: "approval request not found or already resolved",
-		}, nil)
+	q, err := octasecurity.GetApprovalQueue(storeFile)
+	if err != nil {
+		opts.Respond(false, nil, &protocol.ErrorShape{Code: protocol.ErrCodeInternal, Message: err.Error()}, nil)
 		return nil
 	}
+	// Approve without adding to whitelist (ttl=0)
 
-	if err := saveApprovalQueue(storePath, entries); err != nil {
+	ttl := time.Duration(int64(*opts.Context.Config.Security.ApprovalQueue.TimeoutSeconds)) * time.Second
+	if _, err := q.Approve(requestID, strings.TrimSpace(approverID), ttl); err != nil {
 		opts.Respond(false, nil, &protocol.ErrorShape{
-			Code:    protocol.ErrCodeInternal,
+			Code:    protocol.ErrCodeNotFound,
 			Message: err.Error(),
 		}, nil)
 		return nil
@@ -197,42 +205,34 @@ func ApprovalsDenyHandler(opts HandlerOpts) error {
 
 	cfg := loadConfigFromContext(opts.Context)
 	env := func(k string) string { return os.Getenv(k) }
-	storePath := resolveApprovalStorePath(cfg, env)
-
-	entries, err := loadApprovalQueue(storePath)
+	storeFile, timeoutSeconds := resolveApprovalStoreFile(cfg, env)
+	snap, err := loadApprovalSnapshot(storeFile)
 	if err != nil {
-		opts.Respond(false, nil, &protocol.ErrorShape{
-			Code:    protocol.ErrCodeInternal,
-			Message: err.Error(),
-		}, nil)
+		opts.Respond(false, nil, &protocol.ErrorShape{Code: protocol.ErrCodeInternal, Message: err.Error()}, nil)
 		return nil
 	}
-
-	found := false
-	now := time.Now().Unix()
-	for i := range entries {
-		if entries[i].ID == requestID && entries[i].Status == "pending" {
-			entries[i].Status = "denied"
-			entries[i].ApproverID = approverID
-			entries[i].DenyReason = reason
-			t := now
-			entries[i].ResolvedAt = &t
-			found = true
+	now := time.Now()
+	for _, rec := range snap.Records {
+		if rec.ID == requestID && rec.State == string(security.ApprovalPending) && timeoutSeconds > 0 {
+			if now.After(rec.RequestedAt.Add(time.Duration(timeoutSeconds) * time.Second)) {
+				opts.Respond(false, nil, &protocol.ErrorShape{
+					Code:    protocol.ErrCodeInvalidRequest,
+					Message: "approval request expired",
+				}, nil)
+				return nil
+			}
 			break
 		}
 	}
 
-	if !found {
-		opts.Respond(false, nil, &protocol.ErrorShape{
-			Code:    protocol.ErrCodeNotFound,
-			Message: "approval request not found or already resolved",
-		}, nil)
+	q, err := octasecurity.GetApprovalQueue(storeFile)
+	if err != nil {
+		opts.Respond(false, nil, &protocol.ErrorShape{Code: protocol.ErrCodeInternal, Message: err.Error()}, nil)
 		return nil
 	}
-
-	if err := saveApprovalQueue(storePath, entries); err != nil {
+	if _, err := q.Deny(requestID, strings.TrimSpace(approverID), strings.TrimSpace(reason)); err != nil {
 		opts.Respond(false, nil, &protocol.ErrorShape{
-			Code:    protocol.ErrCodeInternal,
+			Code:    protocol.ErrCodeNotFound,
 			Message: err.Error(),
 		}, nil)
 		return nil

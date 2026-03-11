@@ -155,12 +155,14 @@ func RunIsolatedAgentTurn(ctx *Context, agentID string, sessionKey string, messa
 		}
 	}
 	rt, err := runtime.New(runCtx, runtime.Options{
-		Tools:              agentTools,
-		ModelFactory:       modelFactory,
-		ProjectRoot:        projectRoot,
-		Config:             ctx.Config,
-		EnableSystemPrompt: true,
-		Env:                os.Getenv,
+		Tools:               agentTools,
+		ModelFactory:        modelFactory,
+		ProjectRoot:         projectRoot,
+		Config:              ctx.Config,
+		EnableSandbox:       true,
+		EnableApprovalQueue: true,
+		EnableSystemPrompt:  true,
+		Env:                 os.Getenv,
 	})
 	if err != nil {
 		return
@@ -221,12 +223,14 @@ func RunCronAgentOnce(ctx *Context, agentID string, sessionKey string, message s
 	}
 
 	rt, err := runtime.New(runCtx, runtime.Options{
-		Tools:              agentTools,
-		ModelFactory:       modelFactory,
-		ProjectRoot:        projectRoot,
-		Config:             ctx.Config,
-		EnableSystemPrompt: true,
-		Env:                os.Getenv,
+		Tools:               agentTools,
+		ModelFactory:        modelFactory,
+		ProjectRoot:         projectRoot,
+		Config:              ctx.Config,
+		EnableSandbox:       true,
+		EnableApprovalQueue: true,
+		EnableSystemPrompt:  true,
+		Env:                 os.Getenv,
 	})
 	if err != nil {
 		return "", err

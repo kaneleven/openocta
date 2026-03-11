@@ -15,20 +15,112 @@ export function syncSandboxFromConfig(host: AppViewState): SandboxConfigForm | n
 
 export function handleSandboxToggleEnabled(host: AppViewState) {
   if (!host.client || !host.connected) return;
+  // 以当前 UI 可见状态为准，避免因 configForm/snapshot 差异导致开关不同步
+  const currentForm =
+    (host.sandboxForm as SandboxConfigForm | null) ?? getSandboxFromConfig(host) ?? {};
+  const currentEnabled = currentForm.enabled !== false;
+
   const base = cloneConfigObject(host.configForm ?? host.configSnapshot?.config ?? {}) as Record<
     string,
     unknown
   >;
-  if (!base.sandbox || typeof base.sandbox !== "object") {
-    base.sandbox = {};
+  if (!base.security || typeof base.security !== "object") {
+    base.security = {};
   }
-  const sb = base.sandbox as Record<string, unknown>;
-  sb.enabled = !(sb.enabled === true);
-  // 更新本地表单状态，确保按钮状态立即刷新
-  host.sandboxForm = cloneConfigObject(base.sandbox) as SandboxConfigForm;
+  const security = base.security as { sandbox?: Record<string, unknown> };
+  if (!security.sandbox || typeof security.sandbox !== "object") {
+    security.sandbox = {};
+  }
+  const sb = security.sandbox as Record<string, unknown>;
+  // 取反当前 UI 状态：enabled 默认 true，显式 false 表示关闭
+  sb.enabled = !currentEnabled;
+  // 更新本地表单状态，确保按钮状态立即刷新（保留其他字段）
+  host.sandboxForm = {
+    ...(currentForm as SandboxConfigForm),
+    enabled: sb.enabled as boolean,
+  };
   host.configSaving = true;
   host.lastError = null;
-  saveConfigPatch(host, { sandbox: base.sandbox })
+  saveConfigPatch(host, { security })
+    .then(() => loadConfig(host))
+    .finally(() => {
+      host.configSaving = false;
+    });
+}
+
+export function handleValidatorToggleEnabled(host: AppViewState) {
+  if (!host.client || !host.connected) return;
+  const currentForm =
+    (host.sandboxForm as SandboxConfigForm | null) ?? getSandboxFromConfig(host) ?? {};
+  const currentValidator = (currentForm.validator ?? {}) as NonNullable<SandboxConfigForm["validator"]> & {
+    enabled?: boolean;
+  };
+  const currentEnabled = currentValidator.enabled !== false;
+
+  const base = cloneConfigObject(host.configForm ?? host.configSnapshot?.config ?? {}) as Record<
+    string,
+    unknown
+  >;
+  if (!base.security || typeof base.security !== "object") {
+    base.security = {};
+  }
+  const security = base.security as { sandbox?: Record<string, unknown>; validator?: Record<string, unknown> };
+  if (!security.validator || typeof security.validator !== "object") {
+    security.validator = {};
+  }
+  const v = security.validator as Record<string, unknown>;
+  v.enabled = !currentEnabled;
+
+  host.sandboxForm = {
+    ...currentForm,
+    validator: {
+      ...currentValidator,
+      enabled: v.enabled as boolean,
+    },
+  };
+  host.configSaving = true;
+  host.lastError = null;
+  saveConfigPatch(host, { security })
+    .then(() => loadConfig(host))
+    .finally(() => {
+      host.configSaving = false;
+    });
+}
+
+export function handleApprovalQueueToggleEnabled(host: AppViewState) {
+  if (!host.client || !host.connected) return;
+  const currentForm =
+    (host.sandboxForm as SandboxConfigForm | null) ?? getSandboxFromConfig(host) ?? {};
+  const currentQueue =
+    (currentForm.approvalQueue ?? {}) as NonNullable<SandboxConfigForm["approvalQueue"]> & {
+      enabled?: boolean;
+    };
+  const currentEnabled = currentQueue.enabled === true;
+
+  const base = cloneConfigObject(host.configForm ?? host.configSnapshot?.config ?? {}) as Record<
+    string,
+    unknown
+  >;
+  if (!base.security || typeof base.security !== "object") {
+    base.security = {};
+  }
+  const security = base.security as { sandbox?: Record<string, unknown>; approvalQueue?: Record<string, unknown> };
+  if (!security.approvalQueue || typeof security.approvalQueue !== "object") {
+    security.approvalQueue = {};
+  }
+  const q = security.approvalQueue as Record<string, unknown>;
+  q.enabled = !currentEnabled;
+
+  host.sandboxForm = {
+    ...currentForm,
+    approvalQueue: {
+      ...currentQueue,
+      enabled: q.enabled as boolean,
+    },
+  };
+  host.configSaving = true;
+  host.lastError = null;
+  saveConfigPatch(host, { security })
     .then(() => loadConfig(host))
     .finally(() => {
       host.configSaving = false;
@@ -42,6 +134,9 @@ export function handleSandboxPatch(
   value: unknown,
 ) {
   setPathValue(sandboxForm, path, value);
+  // Ensure UI updates immediately (new deep-cloned object reference).
+  // This avoids timing issues where controlled inputs are re-rendered with stale nested references.
+  host.sandboxForm = cloneConfigObject(sandboxForm) as Record<string, unknown>;
 }
 
 export async function handleSandboxSave(
@@ -50,16 +145,6 @@ export async function handleSandboxSave(
 ) {
   const current = (sandboxForm as SandboxConfigForm) ?? {};
   const normalized = cloneConfigObject(current) as SandboxConfigForm;
-  // 默认安全钩子：若未显式配置，则在保存时写入为 true
-  const hooks = (normalized.hooks ?? {}) as NonNullable<SandboxConfigForm["hooks"]>;
-  if (hooks.beforeAgent == null) hooks.beforeAgent = true;
-  if (hooks.beforeModel == null) hooks.beforeModel = true;
-  if (hooks.afterModel == null) hooks.afterModel = true;
-  if (hooks.beforeTool == null) hooks.beforeTool = true;
-  if (hooks.afterTool == null) hooks.afterTool = true;
-  if (hooks.afterAgent == null) hooks.afterAgent = true;
-  normalized.hooks = hooks;
-
   // 解析资源限制中的内存字符串（支持 1G、512M、1024 等，统一存为字节数）
   const rl = (normalized.resourceLimit ?? {}) as NonNullable<SandboxConfigForm["resourceLimit"]> & {
     maxMemoryBytes?: number | string;
@@ -85,6 +170,18 @@ export async function handleSandboxSave(
   if (errorMsg) {
     host.lastError = errorMsg;
     return;
+  }
+  // 默认资源限制：若用户未填写，则使用安全默认值
+  if (!rl.maxCpuPercent || rl.maxCpuPercent <= 0) {
+    rl.maxCpuPercent = 60;
+  }
+  if (typeof rl.maxMemoryBytes !== "number" || rl.maxMemoryBytes <= 0) {
+    // 1 GiB
+    rl.maxMemoryBytes = 1024 ** 3;
+  }
+  if (typeof rl.maxDiskBytes !== "number" || rl.maxDiskBytes <= 0) {
+    // 1 GiB
+    rl.maxDiskBytes = 1024 ** 3;
   }
   normalized.resourceLimit = rl;
 

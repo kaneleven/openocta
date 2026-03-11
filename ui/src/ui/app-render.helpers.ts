@@ -11,6 +11,7 @@ import { iconForTab, pathForTab, titleForTab, type Tab } from "./navigation.ts";
 
 export function renderTab(state: AppViewState, tab: Tab) {
   const href = pathForTab(tab, state.basePath);
+  const isBeta = tab === "sandbox";
   return html`
     <a
       href=${href}
@@ -32,7 +33,10 @@ export function renderTab(state: AppViewState, tab: Tab) {
       title=${titleForTab(tab)}
     >
       <span class="nav-item__icon" aria-hidden="true">${icons[iconForTab(tab)]}</span>
-      <span class="nav-item__text">${titleForTab(tab)}</span>
+      <span class="nav-item__text">
+        ${titleForTab(tab)}
+        ${isBeta ? html`<span class="nav-badge nav-badge--beta" title="Beta">BETA</span>` : ""}
+      </span>
     </a>
   `;
 }
@@ -133,27 +137,6 @@ export function renderChatControls(state: AppViewState) {
         ${refreshIcon}
       </button>
       <span class="chat-controls__separator">|</span>
-      <button
-        class="btn btn--sm btn--icon ${showThinking ? "active" : ""}"
-        ?disabled=${disableThinkingToggle}
-        @click=${() => {
-          if (disableThinkingToggle) {
-            return;
-          }
-          state.applySettings({
-            ...state.settings,
-            chatShowThinking: !state.settings.chatShowThinking,
-          });
-        }}
-        aria-pressed=${showThinking}
-        title=${
-          disableThinkingToggle
-            ? "Disabled during onboarding"
-            : "Toggle assistant thinking/working output"
-        }
-      >
-        ${icons.brain}
-      </button>
       <button
         class="btn btn--sm btn--icon ${focusActive ? "active" : ""}"
         ?disabled=${disableFocusToggle}

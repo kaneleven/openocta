@@ -1,5 +1,6 @@
-import { html, nothing } from "lit";
+import { html, nothing, type TemplateResult } from "lit";
 import { t } from "../strings.js";
+import type { McpServerEntry } from "./mcp.js";
 
 export type DigitalEmployee = {
   id: string;
@@ -25,6 +26,7 @@ export type DigitalEmployeeProps = {
   onFilterChange: (next: string) => void;
   onViewModeChange: (mode: DigitalEmployeeViewMode) => void;
   onOpenEmployee: (employeeId: string) => void;
+  onCopy: (employeeId: string) => void;
   // 创建
   createModalOpen: boolean;
   createName: string;
@@ -33,8 +35,20 @@ export type DigitalEmployeeProps = {
   createError: string | null;
   createBusy: boolean;
   advancedOpen: boolean;
+  // MCP（创建）
+  createMcpMode: "builder" | "raw";
   mcpJson: string;
   onMcpJsonChange: (value: string) => void;
+  mcpItems: EmployeeMcpItem[];
+  onMcpModeChange: (mode: "builder" | "raw") => void;
+  onMcpAddItem: () => void;
+  onMcpRemoveItem: (id: string) => void;
+  onMcpCollapsedChange: (id: string, collapsed: boolean) => void;
+  onMcpKeyChange: (id: string, key: string) => void;
+  onMcpEditModeChange: (id: string, mode: "form" | "raw") => void;
+  onMcpConnectionTypeChange: (id: string, type: "stdio" | "url" | "service") => void;
+  onMcpFormPatch: (id: string, patch: Partial<McpServerEntry>) => void;
+  onMcpRawChange: (id: string, json: string) => void;
   skillUploadName: string;
   skillUploadFiles: File[];
   skillUploadError: string | null;
@@ -58,6 +72,17 @@ export type DigitalEmployeeProps = {
   editDescription: string;
   editPrompt: string;
   editMcpJson: string;
+  editMcpMode: "builder" | "raw";
+  editMcpItems: EmployeeMcpItem[];
+  onEditMcpModeChange: (mode: "builder" | "raw") => void;
+  onEditMcpAddItem: () => void;
+  onEditMcpRemoveItem: (id: string) => void;
+  onEditMcpCollapsedChange: (id: string, collapsed: boolean) => void;
+  onEditMcpKeyChange: (id: string, key: string) => void;
+  onEditMcpEditModeChange: (id: string, mode: "form" | "raw") => void;
+  onEditMcpConnectionTypeChange: (id: string, type: "stdio" | "url" | "service") => void;
+  onEditMcpFormPatch: (id: string, patch: Partial<McpServerEntry>) => void;
+  onEditMcpRawChange: (id: string, json: string) => void;
   editSkillNames: string[];
   editSkillFilesToUpload: File[];
   editSkillsToDelete: string[];
@@ -71,6 +96,27 @@ export type DigitalEmployeeProps = {
   onEditSkillDelete: (skillName: string) => void;
   onEditSkillUndoDelete: (skillName: string) => void;
   onEditSubmit: () => void;
+};
+
+export type EmployeeMcpItem = {
+  id: string;
+  key: string;
+  editMode: "form" | "raw";
+  connectionType: "stdio" | "url" | "service";
+  draft: McpServerEntry;
+  rawJson: string;
+  rawError: string | null;
+  collapsed: boolean;
+};
+
+type EmployeeMcpCallbacks = {
+  onRemoveItem: (id: string) => void;
+  onCollapsedChange: (id: string, collapsed: boolean) => void;
+  onKeyChange: (id: string, key: string) => void;
+  onEditModeChange: (id: string, mode: "form" | "raw") => void;
+  onConnectionTypeChange: (id: string, type: "stdio" | "url" | "service") => void;
+  onFormPatch: (id: string, patch: Partial<McpServerEntry>) => void;
+  onRawChange: (id: string, json: string) => void;
 };
 
 export function renderDigitalEmployee(props: DigitalEmployeeProps) {
@@ -233,19 +279,64 @@ export function renderDigitalEmployee(props: DigitalEmployeeProps) {
                               ~/.openocta/employee_skills/${employeeIdPreview}/...）
                             </div>
                             <div class="field" style="margin-top: 8px;">
-                              <span>MCP 配置（可选，JSON）</span>
-                              <textarea
-                                rows="4"
-                                .value=${props.mcpJson}
-                                @input=${(e: Event) =>
-                                  props.onMcpJsonChange(
-                                    (e.target as HTMLTextAreaElement).value,
-                                  )}
-                                placeholder='remote: {"prometheus":{"service":"prometheus","serviceUrl":"http://localhost:9090"}} \nlocal: {"prometheus_test":{"enabled":true,"command":"npx","args":["prometheus-mcp@latest","stdio"],"env":{"PROMETHEUS_URL":"http://192.168.50.59:9090"}}}'
-                              ></textarea>
-                              <div class="list-sub muted" style="font-size: 11px; margin-top: 4px;">
-                                与主配置 mcp.servers 结构一致，会话时合并（同 key 时员工覆盖）
+                              <span>MCP 配置（可选）</span>
+                              <div class="row" style="margin-top: 6px; gap: 8px; flex-wrap: wrap;">
+                                <button
+                                  class="btn ${props.createMcpMode === "builder" ? "primary" : ""}"
+                                  type="button"
+                                  @click=${() => props.onMcpModeChange("builder")}
+                                >
+                                  点选配置
+                                </button>
+                                <button
+                                  class="btn ${props.createMcpMode === "raw" ? "primary" : ""}"
+                                  type="button"
+                                  @click=${() => props.onMcpModeChange("raw")}
+                                >
+                                  原生 JSON
+                                </button>
                               </div>
+                              ${
+                                props.createMcpMode === "raw"
+                                  ? html`
+                                      <textarea
+                                        rows="4"
+                                        style="margin-top: 8px;"
+                                        .value=${props.mcpJson}
+                                        @input=${(e: Event) =>
+                                          props.onMcpJsonChange(
+                                            (e.target as HTMLTextAreaElement).value,
+                                          )}
+                                        placeholder='{"prometheus":{"service":"prometheus","serviceUrl":"http://localhost:9090"}}'
+                                      ></textarea>
+                                      <div class="list-sub muted" style="font-size: 11px; margin-top: 4px;">
+                                        与主配置 mcp.servers 结构一致，会话时合并（同 key 时员工覆盖）
+                                      </div>
+                                    `
+                                  : html`
+                                      <div class="row" style="margin-top: 8px; justify-content: space-between; align-items: center;">
+                                        <div class="muted" style="font-size: 12px;">
+                                          可添加多个 MCP；配置完成后可折叠，避免页面过长。
+                                        </div>
+                                        <button class="btn btn--sm" type="button" @click=${props.onMcpAddItem}>
+                                          + 添加 MCP
+                                        </button>
+                                      </div>
+                                      <div style="margin-top: 8px; display: grid; gap: 10px;">
+                                        ${props.mcpItems.map((item) =>
+                                          renderEmployeeMcpItem(item, {
+                                            onRemoveItem: props.onMcpRemoveItem,
+                                            onCollapsedChange: props.onMcpCollapsedChange,
+                                            onKeyChange: props.onMcpKeyChange,
+                                            onEditModeChange: props.onMcpEditModeChange,
+                                            onConnectionTypeChange: props.onMcpConnectionTypeChange,
+                                            onFormPatch: props.onMcpFormPatch,
+                                            onRawChange: props.onMcpRawChange,
+                                          }),
+                                        )}
+                                      </div>
+                                    `
+                              }
                             </div>
                             <div class="field" style="margin-top: 8px;">
                               <span>技能名称（可选）</span>
@@ -347,16 +438,64 @@ export function renderDigitalEmployee(props: DigitalEmployeeProps) {
                     ></textarea>
                   </div>
                   <div class="field" style="margin-top: 12px;">
-                    <span>MCP 配置（可选，JSON）</span>
-                    <textarea
-                      rows="4"
-                      .value=${props.editMcpJson}
-                      @input=${(e: Event) =>
-                        props.onEditMcpJsonChange(
-                          (e.target as HTMLTextAreaElement).value,
-                        )}
-                      placeholder='{"prometheus":{"service":"prometheus","serviceUrl":"http://localhost:9090"}}'
-                    ></textarea>
+                    <span>MCP 配置（可选）</span>
+                    <div class="row" style="margin-top: 6px; gap: 8px; flex-wrap: wrap;">
+                      <button
+                        class="btn ${props.editMcpMode === "builder" ? "primary" : ""}"
+                        type="button"
+                        @click=${() => props.onEditMcpModeChange("builder")}
+                      >
+                        点选配置
+                      </button>
+                      <button
+                        class="btn ${props.editMcpMode === "raw" ? "primary" : ""}"
+                        type="button"
+                        @click=${() => props.onEditMcpModeChange("raw")}
+                      >
+                        原生 JSON
+                      </button>
+                    </div>
+                    ${
+                      props.editMcpMode === "raw"
+                        ? html`
+                            <textarea
+                              rows="4"
+                              style="margin-top: 8px;"
+                              .value=${props.editMcpJson}
+                              @input=${(e: Event) =>
+                                props.onEditMcpJsonChange(
+                                  (e.target as HTMLTextAreaElement).value,
+                                )}
+                              placeholder='{"prometheus":{"service":"prometheus","serviceUrl":"http://localhost:9090"}}'
+                            ></textarea>
+                            <div class="list-sub muted" style="font-size: 11px; margin-top: 4px;">
+                              与主配置 mcp.servers 结构一致，会话时合并（同 key 时员工覆盖）
+                            </div>
+                          `
+                        : html`
+                            <div class="row" style="margin-top: 8px; justify-content: space-between; align-items: center;">
+                              <div class="muted" style="font-size: 12px;">
+                                可添加多个 MCP；配置完成后可折叠，避免页面过长。
+                              </div>
+                              <button class="btn btn--sm" type="button" @click=${props.onEditMcpAddItem}>
+                                + 添加 MCP
+                              </button>
+                            </div>
+                            <div style="margin-top: 8px; display: grid; gap: 10px;">
+                              ${props.editMcpItems.map((item) =>
+                                renderEmployeeMcpItem(item, {
+                                  onRemoveItem: props.onEditMcpRemoveItem,
+                                  onCollapsedChange: props.onEditMcpCollapsedChange,
+                                  onKeyChange: props.onEditMcpKeyChange,
+                                  onEditModeChange: props.onEditMcpEditModeChange,
+                                  onConnectionTypeChange: props.onEditMcpConnectionTypeChange,
+                                  onFormPatch: props.onEditMcpFormPatch,
+                                  onRawChange: props.onEditMcpRawChange,
+                                }),
+                              )}
+                            </div>
+                          `
+                    }
                   </div>
                   <div class="field" style="margin-top: 12px;">
                     <span>已有技能</span>
@@ -487,6 +626,7 @@ function renderEmployeeListRow(emp: DigitalEmployee, props: DigitalEmployeeProps
       </div>
       <div class="row" style="gap: 8px; align-items: center; justify-content: flex-end;">
         <button class="btn btn--sm primary" @click=${() => props.onOpenEmployee(emp.id)}>会话</button>
+        <button class="btn btn--sm" @click=${() => props.onCopy(emp.id)}>复制</button>
         <button class="btn btn--sm" @click=${() => props.onEdit(emp.id)}>
           修改
         </button>
@@ -532,6 +672,7 @@ function renderEmployeeCard(emp: DigitalEmployee, props: DigitalEmployeeProps) {
       </div>
       <div class="skills-server-card__footer" @click=${(e: Event) => e.stopPropagation()}>
         <button class="btn btn--sm primary" @click=${() => props.onOpenEmployee(emp.id)}>会话</button>
+        <button class="btn btn--sm" @click=${() => props.onCopy(emp.id)}>复制</button>
         <button class="btn btn--sm" @click=${() => props.onEdit(emp.id)}>
           修改
         </button>
@@ -596,5 +737,266 @@ function deriveEmployeeIdFromName(name: string): string {
     out = out.slice(0, 64);
   }
   return out;
+}
+
+function renderEmployeeMcpItem(item: EmployeeMcpItem, cb: EmployeeMcpCallbacks): TemplateResult {
+  const title = item.key?.trim() ? item.key.trim() : "未命名 MCP";
+  const typeLabel = item.editMode === "raw" ? "JSON" : item.connectionType;
+  const hasError = Boolean(item.rawError);
+  const collapsed = Boolean(item.collapsed);
+  return html`
+    <details
+      class="card"
+      style="padding: 10px;"
+      ?open=${!collapsed}
+      @toggle=${(e: Event) => {
+        const el = e.target as HTMLDetailsElement;
+        cb.onCollapsedChange(item.id, !el.open);
+      }}
+    >
+      <summary class="row" style="cursor: pointer; list-style: none; align-items: center; gap: 8px;">
+        <button
+          class="btn btn--sm"
+          type="button"
+          title=${collapsed ? "展开" : "折叠"}
+          @click=${(e: Event) => {
+            // 明确的折叠/展开按钮：仅切换状态，不走 summary 默认行为
+            e.preventDefault();
+            e.stopPropagation();
+            cb.onCollapsedChange(item.id, !collapsed);
+          }}
+        >
+          ${collapsed ? "▸ 展开" : "▾ 折叠"}
+        </button>
+        <span style="font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          ${title}
+        </span>
+        <span class="chip" style="font-size: 11px;">${typeLabel}</span>
+        ${hasError ? html`<span class="chip chip-warn" style="font-size: 11px;">有错误</span>` : nothing}
+        <button
+          class="btn btn--sm"
+          type="button"
+          style="margin-left: 6px;"
+          @click=${(e: Event) => {
+            e.preventDefault();
+            e.stopPropagation();
+            cb.onRemoveItem(item.id);
+          }}
+        >
+          删除
+        </button>
+      </summary>
+
+      <div style="margin-top: 10px;">
+        <div class="field">
+          <span>Key（唯一）*</span>
+          <input
+            type="text"
+            .value=${item.key}
+            placeholder="如 prometheus, filesystem"
+            @input=${(e: Event) => cb.onKeyChange(item.id, (e.target as HTMLInputElement).value)}
+          />
+        </div>
+
+        <div class="row" style="margin-top: 10px; gap: 8px;">
+          <button
+            class="btn ${item.editMode === "form" ? "primary" : ""}"
+            type="button"
+            @click=${() => cb.onEditModeChange(item.id, "form")}
+          >
+            点选配置
+          </button>
+          <button
+            class="btn ${item.editMode === "raw" ? "primary" : ""}"
+            type="button"
+            @click=${() => cb.onEditModeChange(item.id, "raw")}
+          >
+            原生 JSON
+          </button>
+        </div>
+
+        ${
+          item.editMode === "raw"
+            ? html`
+                <div class="field" style="margin-top: 10px;">
+                  <span>JSON</span>
+                  <textarea
+                    rows="6"
+                    style="font-family: var(--mono); font-size: 12px;"
+                    .value=${item.rawJson}
+                    @input=${(e: Event) =>
+                      cb.onRawChange(item.id, (e.target as HTMLTextAreaElement).value)}
+                  ></textarea>
+                  ${
+                    item.rawError
+                      ? html`<div class="callout danger" style="margin-top: 8px;">${item.rawError}</div>`
+                      : nothing
+                  }
+                </div>
+              `
+            : html`
+                <div
+                  class="row"
+                  style="
+                    display: flex;
+                    gap: 4px;
+                    margin-top: 12px;
+                    border-bottom: 1px solid var(--input, #333);
+                    padding-bottom: 4px;
+                  "
+                >
+                  <button
+                    class="btn ${item.connectionType === "stdio" ? "primary" : ""}"
+                    type="button"
+                    style="flex: 1; min-width: 0;"
+                    @click=${() => cb.onConnectionTypeChange(item.id, "stdio")}
+                  >
+                    stdio
+                  </button>
+                  <button
+                    class="btn ${item.connectionType === "url" ? "primary" : ""}"
+                    type="button"
+                    style="flex: 1; min-width: 0;"
+                    @click=${() => cb.onConnectionTypeChange(item.id, "url")}
+                  >
+                    url
+                  </button>
+                  <button
+                    class="btn ${item.connectionType === "service" ? "primary" : ""}"
+                    type="button"
+                    style="flex: 1; min-width: 0;"
+                    @click=${() => cb.onConnectionTypeChange(item.id, "service")}
+                  >
+                    service
+                  </button>
+                </div>
+                <div style="margin-top: 10px;">
+                  ${renderEmployeeMcpFormFields(item, (p) => cb.onFormPatch(item.id, p))}
+                </div>
+              `
+        }
+      </div>
+    </details>
+  `;
+}
+
+function formatEnvForEdit(env: Record<string, string> | undefined): string {
+  if (!env || typeof env !== "object") return "";
+  return Object.entries(env)
+    .map(([k, v]) => `${k}=${v}`)
+    .join("\n");
+}
+
+function parseEnvFromEdit(text: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const line of text.split(/\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq > 0) {
+      const key = trimmed.slice(0, eq).trim();
+      const val = trimmed.slice(eq + 1).trim();
+      if (key) out[key] = val;
+    }
+  }
+  return out;
+}
+
+function renderEmployeeMcpFormFields(
+  item: EmployeeMcpItem,
+  onPatch: (p: Partial<McpServerEntry>) => void,
+): TemplateResult {
+  const MCP_COMMAND_OPTIONS = ["npx", "docker", "uv"] as const;
+  if (item.connectionType === "stdio") {
+    // 优先从表单草稿中读取 command；如果为空且当前是 JSON 模式，则尝试从 rawJson 中解析一次。
+    let cmd = (item.draft?.command ?? "").trim();
+    if (!cmd && item.editMode === "raw" && item.rawJson?.trim()) {
+      try {
+        const parsed = JSON.parse(item.rawJson) as { command?: string } | null;
+        if (parsed && typeof parsed.command === "string" && parsed.command.trim()) {
+          cmd = parsed.command.trim();
+        }
+      } catch {
+        // 若 JSON 无法解析，则忽略，保持默认值逻辑
+      }
+    }
+    cmd = cmd || "npx";
+    const baseOptions = MCP_COMMAND_OPTIONS as readonly string[];
+    const options = baseOptions.includes(cmd) ? baseOptions : ([cmd, ...baseOptions] as readonly string[]);
+    return html`
+      <div class="field">
+        <span>command *</span>
+        <select
+          @change=${(e: Event) => onPatch({ command: (e.target as HTMLSelectElement).value })}
+        >
+          ${options.map((c) => html`
+            <option 
+              value=${c} 
+              ?selected=${c === cmd} 
+            >
+              ${c}
+            </option>
+          `)}
+        </select>
+      </div>
+      <div class="field" style="margin-top: 8px;">
+        <span>args</span>
+        <input
+          type="text"
+          .value=${(item.draft?.args ?? []).join(" ")}
+          placeholder="-y prometheus-mcp-server"
+          @input=${(e: Event) => {
+            const val = (e.target as HTMLInputElement).value;
+            onPatch({ args: val.trim() ? val.trim().split(/\s+/) : [] });
+          }}
+        />
+      </div>
+      <div class="field" style="margin-top: 8px;">
+        <span>env</span>
+        <textarea
+          style="min-height: 80px; font-family: var(--mono); font-size: 12px;"
+          placeholder="KEY=value"
+          .value=${formatEnvForEdit(item.draft?.env)}
+          @input=${(e: Event) => {
+            const val = (e.target as HTMLTextAreaElement).value;
+            onPatch({ env: parseEnvFromEdit(val) });
+          }}
+        ></textarea>
+      </div>
+    `;
+  }
+  if (item.connectionType === "url") {
+    return html`
+      <div class="field">
+        <span>url *</span>
+        <input
+          type="text"
+          .value=${item.draft?.url ?? ""}
+          placeholder="https://mcp.example.com/sse"
+          @input=${(e: Event) => onPatch({ url: (e.target as HTMLInputElement).value })}
+        />
+      </div>
+    `;
+  }
+  return html`
+    <div class="field">
+      <span>service *</span>
+      <input
+        type="text"
+        .value=${item.draft?.service ?? ""}
+        placeholder="prometheus"
+        @input=${(e: Event) => onPatch({ service: (e.target as HTMLInputElement).value })}
+      />
+    </div>
+    <div class="field" style="margin-top: 8px;">
+      <span>serviceUrl *</span>
+      <input
+        type="text"
+        .value=${item.draft?.serviceUrl ?? ""}
+        placeholder="http://localhost:9090"
+        @input=${(e: Event) => onPatch({ serviceUrl: (e.target as HTMLInputElement).value })}
+      />
+    </div>
+  `;
 }
 

@@ -52,19 +52,37 @@ type OpenOctaConfig struct {
 	Gateway     *GatewayConfig     `json:"gateway,omitempty"`
 	Memory      *MemoryConfig      `json:"memory,omitempty"`
 	Mcp         *McpConfig         `json:"mcp,omitempty"`
-	Sandbox     *SandboxConfig     `json:"sandbox,omitempty"`
+	// Security groups sandbox, validator, approval queue and related policies.
+	Security *SecurityConfig `json:"security,omitempty"`
 }
 
-// SandboxConfig is root-level sandbox configuration for agent execution.
-type SandboxConfig struct {
-	Enabled       *bool                   `json:"enabled,omitempty"`
-	AllowedPaths  []string                `json:"allowedPaths,omitempty"`
-	NetworkAllow  []string                `json:"networkAllow,omitempty"`
-	Root          *string                 `json:"root,omitempty"`
-	ResourceLimit *SandboxResourceLimit   `json:"resourceLimit,omitempty"`
-	Hooks         *SandboxHooksConfig     `json:"hooks,omitempty"`
+// SecurityConfig groups sandbox, validator and approval queue.
+type SecurityConfig struct {
+	Sandbox       *SandboxConfig          `json:"sandbox,omitempty"`
 	Validator     *SandboxValidatorConfig `json:"validator,omitempty"`
-	ApprovalStore *string                 `json:"approvalStore,omitempty"` // default: stateDir/agents/approvals
+	ApprovalQueue *SandboxApprovalQueue   `json:"approvalQueue,omitempty"`
+}
+
+// SandboxConfig defines sandbox configuration for agent execution.
+type SandboxConfig struct {
+	Enabled       *bool                 `json:"enabled,omitempty"`
+	AllowedPaths  []string              `json:"allowedPaths,omitempty"`
+	NetworkAllow  []string              `json:"networkAllow,omitempty"`
+	Root          *string               `json:"root,omitempty"`
+	ResourceLimit *SandboxResourceLimit `json:"resourceLimit,omitempty"`
+	// ApprovalStore controls where approval queue records are stored on disk.
+	// Default: stateDir/agents/approvals/approvals.json
+	ApprovalStore *string `json:"approvalStore,omitempty"`
+}
+
+// SandboxApprovalQueue configures approval queue storage and timeouts.
+type SandboxApprovalQueue struct {
+	Enabled         *bool    `json:"enabled,omitempty"`
+	TimeoutSeconds  *int     `json:"timeoutSeconds,omitempty"`  // pending approval expiry window (best-effort)
+	BlockOnApproval *bool    `json:"blockOnApproval,omitempty"` // if true, block execution and wait for approval; if false, return error immediately
+	Allow           []string `json:"allow,omitempty"`           // commands that bypass approval (auto-approved)
+	Ask             []string `json:"ask,omitempty"`             // commands that require approval
+	Deny            []string `json:"deny,omitempty"`            // commands that are denied
 }
 
 // SandboxResourceLimit holds optional resource limits for the sandbox.
@@ -74,18 +92,9 @@ type SandboxResourceLimit struct {
 	MaxDiskBytes   *uint64  `json:"maxDiskBytes,omitempty"`
 }
 
-// SandboxHooksConfig toggles for the six security checkpoints.
-type SandboxHooksConfig struct {
-	BeforeAgent *bool `json:"beforeAgent,omitempty"` // request validation, IP blacklist, rate limit
-	BeforeModel *bool `json:"beforeModel,omitempty"` // prompt injection, sensitive words
-	AfterModel  *bool `json:"afterModel,omitempty"`  // output review, dangerous commands
-	BeforeTool  *bool `json:"beforeTool,omitempty"`  // tool permission, param validation
-	AfterTool   *bool `json:"afterTool,omitempty"`   // result review, secret leakage
-	AfterAgent  *bool `json:"afterAgent,omitempty"`  // audit logging
-}
-
 // SandboxValidatorConfig for command validation.
 type SandboxValidatorConfig struct {
+	Enabled        *bool    `json:"enabled,omitempty"`
 	BanCommands    []string `json:"banCommands,omitempty"`
 	BanArguments   []string `json:"banArguments,omitempty"`
 	BanFragments   []string `json:"banFragments,omitempty"`

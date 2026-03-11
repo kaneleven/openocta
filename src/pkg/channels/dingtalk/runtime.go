@@ -72,7 +72,7 @@ func (r *Runtime) Start(ctx context.Context) error {
 
 	// 启动 StreamClient
 	if err := r.streamClient.Start(r.ctx); err != nil {
-		r.logger.Error("dingtalk runtime: failed to start stream client: %w", err)
+		r.logger.Error("dingtalk runtime: failed to start stream client: %v", err)
 		r.BaseRuntimeImpl.MarkConnectionFailed(err)
 		return fmt.Errorf("dingtalk runtime: failed to start stream client: %w", err)
 	}

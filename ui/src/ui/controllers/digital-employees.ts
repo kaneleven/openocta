@@ -177,6 +177,64 @@ export async function getDigitalEmployee(
   }
 }
 
+function normalizeNameForCompare(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+function deriveCopyName(baseName: string, existingNames: string[]): string {
+  const base = baseName.trim() || "employee";
+  const normalizedExisting = new Set(existingNames.map(normalizeNameForCompare));
+  const candidate1 = `${base} copy`;
+  if (!normalizedExisting.has(normalizeNameForCompare(candidate1))) {
+    return candidate1;
+  }
+  for (let i = 2; i <= 99; i++) {
+    const candidate = `${base} copy ${i}`;
+    if (!normalizedExisting.has(normalizeNameForCompare(candidate))) {
+      return candidate;
+    }
+  }
+  return `${base} copy ${Date.now()}`;
+}
+
+export async function copyDigitalEmployee(state: AppViewState, id: string) {
+  if (!state.client || !state.connected) {
+    return;
+  }
+  state.digitalEmployeesError = null;
+  state.digitalEmployeesLoading = true;
+  try {
+    const manifest = await getDigitalEmployee(state, id);
+    if (!manifest) {
+      state.digitalEmployeesError = "无法加载员工详情";
+      return;
+    }
+    const baseName = (manifest.name || manifest.id || id).trim();
+    const nextName = deriveCopyName(
+      baseName || "employee",
+      (state.digitalEmployees ?? []).map((e) => e.name || ""),
+    );
+    const payload: Record<string, unknown> = {
+      name: nextName,
+      description: manifest.description ?? "",
+      prompt: manifest.prompt ?? "",
+      enabled: manifest.enabled !== false,
+    };
+    if (manifest.mcpServers) {
+      payload.mcpServers = manifest.mcpServers;
+    }
+    if (Array.isArray(manifest.skillIds) && manifest.skillIds.length > 0) {
+      payload.skillIds = manifest.skillIds;
+    }
+    await state.client.request<{ id: string }>("employees.create", payload);
+    await loadDigitalEmployees(state);
+  } catch (err) {
+    state.digitalEmployeesError = String(err);
+  } finally {
+    state.digitalEmployeesLoading = false;
+  }
+}
+
 export async function updateDigitalEmployee(state: AppViewState) {
   if (!state.client || !state.connected) {
     return;

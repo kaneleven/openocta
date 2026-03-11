@@ -29,7 +29,9 @@ func runAgent(cmd *cobra.Command, _ []string) error {
 	}
 	ctx := cmd.Context()
 	rt, err := runtime.New(ctx, runtime.Options{
-		Tools: tools.DefaultTools(),
+		Tools:               tools.DefaultTools(),
+		EnableSandbox:       true,
+		EnableApprovalQueue: true,
 	})
 	if err != nil {
 		return fmt.Errorf("create runtime: %w", err)

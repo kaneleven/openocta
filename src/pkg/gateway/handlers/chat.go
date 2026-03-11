@@ -1076,6 +1076,7 @@ func ChatSendHandler(opts HandlerOpts) error {
 				EnableCommands:        true,
 				EnableSubagents:       true,
 				EnableSandbox:         true,
+				EnableApprovalQueue:   true,
 				EnableSystemPrompt:    true,
 				SystemPromptOverrides: systemPromptOverrides,
 				MCPServers:            mcpServers,

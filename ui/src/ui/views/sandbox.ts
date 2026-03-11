@@ -8,6 +8,8 @@ export type SandboxProps = {
   sandbox: SandboxConfigForm | null;
   saving: boolean;
   onToggleEnabled: () => void;
+  onToggleValidatorEnabled?: () => void;
+  onToggleApprovalEnabled?: () => void;
   onPatch: (path: string[], value: unknown) => void;
   onSave: () => void;
   // Approval queue (embedded in sandbox page)
@@ -15,7 +17,7 @@ export type SandboxProps = {
   approvalsResult: ApprovalsListResult | null;
   approvalsError: string | null;
   onApprovalsRefresh: () => void;
-  onApprove: (requestId: string, ttlSeconds?: number) => void;
+  onApprove: (requestId: string) => void;
   onDeny: (requestId: string, reason?: string) => void;
   pathForTab: (tab: Tab) => string;
 };
@@ -46,8 +48,9 @@ export function renderSandbox(props: SandboxProps) {
   const enabled = s.enabled !== false;
   const allowedPaths = joinLines(ensureArray(s.allowedPaths));
   const networkAllow = joinLines(ensureArray(s.networkAllow));
-  const hooks = s.hooks ?? {};
   const validator = s.validator ?? {};
+  const validatorEnabled = (validator as { enabled?: boolean }).enabled;
+  const approvalQueue = (s as { approvalQueue?: { enabled?: boolean; timeoutSeconds?: number; blockOnApproval?: boolean; allow?: string[]; ask?: string[]; deny?: string[] } }).approvalQueue ?? {};
   const banCommands = joinLines(ensureArray(validator.banCommands));
   const banArguments = joinLines(ensureArray(validator.banArguments));
   const banFragments = joinLines(ensureArray(validator.banFragments));
@@ -56,6 +59,13 @@ export function renderSandbox(props: SandboxProps) {
   const maxMemoryBytes = resourceLimit.maxMemoryBytes ?? "";
   const maxDiskBytes = resourceLimit.maxDiskBytes ?? "";
   const secretPatterns = joinLines(ensureArray(validator.secretPatterns));
+  const approvalEnabled = approvalQueue.enabled === true;
+  const approvalTimeoutSeconds = approvalQueue.timeoutSeconds ?? "";
+  // Default unchecked when undefined; only checked when explicitly true
+  let approvalBlockOnApproval = approvalQueue.blockOnApproval === true;
+  const approvalAllow = joinLines(ensureArray(approvalQueue.allow));
+  const approvalAsk = joinLines(ensureArray(approvalQueue.ask));
+  const approvalDeny = joinLines(ensureArray(approvalQueue.deny));
 
   const entries = props.approvalsResult?.entries ?? [];
   const storePath = props.approvalsResult?.storePath ?? "";
@@ -67,20 +77,29 @@ export function renderSandbox(props: SandboxProps) {
           <div class="card-title">${t("navTitleSandbox")}</div>
           <div class="card-sub">${t("subtitleSandbox")}</div>
         </div>
-        <button
-          type="button"
-          class="btn ${enabled ? "btn-ok" : ""}"
-          ?disabled=${props.saving}
-          @click=${props.onToggleEnabled}
-        >
-          ${enabled ? t("sandboxActionDisable") : t("sandboxActionEnable")}
-        </button>
       </div>
 
       <div class="sandbox-sections" style="margin-top: 20px;">
         <details class="sandbox-details" open>
-          <summary class="sandbox-summary">${t("sandboxSectionConfig")}</summary>
+          <summary class="sandbox-summary">
+            <span>${t("securitySectionSandbox")}</span>
+            <span class="security-help" title=${t("securitySectionSandboxDesc")}>❕</span>
+          </summary>
           <div class="sandbox-section-body" style="margin-top: 16px;">
+            <div class="muted" style="font-size: 13px; margin-bottom: 12px;">${t("securitySectionSandboxDesc")}</div>
+            <div class="row" style="align-items: center; gap: 12px; margin-bottom: 16px;">
+              <button
+                type="button"
+                class="btn ${enabled ? "btn-ok" : ""}"
+                ?disabled=${props.saving}
+                @click=${props.onToggleEnabled}
+              >
+                ${enabled ? t("sandboxActionDisable") : t("sandboxActionEnable")}
+              </button>
+              <span class="muted" style="font-size: 13px;">
+                ${enabled ? t("sandboxEnabled") : t("sandboxDisabled")}
+              </span>
+            </div>
             <div class="sandbox-form-center">
               <div class="field" style="width: 100%; margin-bottom: 16px;">
                 <span>${t("sandboxAllowedPaths")}</span>
@@ -153,98 +172,95 @@ export function renderSandbox(props: SandboxProps) {
                 </div>
               </div>
 
-              <div style="margin: 24px 0;">
-                <div class="card-sub" style="margin-bottom: 12px; font-size: 14px;">${t("sandboxHooks")}</div>
-                <div class="sandbox-hooks-grid">
-                  <label class="sandbox-hook-label" style="font-size: 14px;">
-                    <input type="checkbox" ?checked=${hooks.beforeAgent !== false} @change=${(e: Event) =>
-                      props.onPatch(["hooks", "beforeAgent"], (e.target as HTMLInputElement).checked)} />
-                    <span>${t("sandboxHookDescBeforeAgent")}</span>
-                  </label>
-                  <label class="sandbox-hook-label" style="font-size: 14px;">
-                    <input type="checkbox" ?checked=${hooks.beforeModel !== false} @change=${(e: Event) =>
-                      props.onPatch(["hooks", "beforeModel"], (e.target as HTMLInputElement).checked)} />
-                    <span>${t("sandboxHookDescBeforeModel")}</span>
-                  </label>
-                  <label class="sandbox-hook-label" style="font-size: 14px;">
-                    <input type="checkbox" ?checked=${hooks.afterModel !== false} @change=${(e: Event) =>
-                      props.onPatch(["hooks", "afterModel"], (e.target as HTMLInputElement).checked)} />
-                    <span>${t("sandboxHookDescAfterModel")}</span>
-                  </label>
-                  <label class="sandbox-hook-label" style="font-size: 14px;">
-                    <input type="checkbox" ?checked=${hooks.beforeTool !== false} @change=${(e: Event) =>
-                      props.onPatch(["hooks", "beforeTool"], (e.target as HTMLInputElement).checked)} />
-                    <span>${t("sandboxHookDescBeforeTool")}</span>
-                  </label>
-                  <label class="sandbox-hook-label" style="font-size: 14px;">
-                    <input type="checkbox" ?checked=${hooks.afterTool !== false} @change=${(e: Event) =>
-                      props.onPatch(["hooks", "afterTool"], (e.target as HTMLInputElement).checked)} />
-                    <span>${t("sandboxHookDescAfterTool")}</span>
-                  </label>
-                  <label class="sandbox-hook-label" style="font-size: 14px;">
-                    <input type="checkbox" ?checked=${hooks.afterAgent !== false} @change=${(e: Event) =>
-                      props.onPatch(["hooks", "afterAgent"], (e.target as HTMLInputElement).checked)} />
-                    <span>${t("sandboxHookDescAfterAgent")}</span>
-                  </label>
-                </div>
+              <div class="row" style="gap: 8px; margin-top: 16px;">
+                <button type="button" class="btn primary" ?disabled=${props.saving} @click=${props.onSave}>
+                  ${props.saving ? t("commonLoading") : t("commonSave")}
+                </button>
               </div>
+            </div>
+          </div>
+        </details>
 
-              <div style="margin: 24px 0;">
-                <div class="card-sub" style="margin-bottom: 12px; font-size: 14px;">${t("sandboxValidator")}</div>
-                <div class="row" style="flex-direction: column; gap: 12px;">
-                  <div class="field" style="width: 100%;">
-                    <span style="font-size: 14px;">${t("sandboxBanCommands")}</span>
-                    <textarea
-                      rows="2"
-                      style="font-size: 14px;"
-                      .value=${banCommands}
-                      placeholder="dd&#10;mkfs&#10;sudo"
-                      @input=${(e: Event) => {
-                        const v = (e.target as HTMLTextAreaElement).value;
-                        props.onPatch(["validator", "banCommands"], splitLines(v));
-                      }}
-                    ></textarea>
-                  </div>
-                  <div class="field" style="width: 100%;">
-                    <span style="font-size: 14px;">${t("sandboxBanArguments")}</span>
-                    <textarea
-                      rows="2"
-                      style="font-size: 14px;"
-                      .value=${banArguments}
-                      placeholder="--no-preserve-root&#10;/dev/"
-                      @input=${(e: Event) => {
-                        const v = (e.target as HTMLTextAreaElement).value;
-                        props.onPatch(["validator", "banArguments"], splitLines(v));
-                      }}
-                    ></textarea>
-                  </div>
-                  <div class="field" style="width: 100%;">
-                    <span style="font-size: 14px;">${t("sandboxBanFragments")}</span>
-                    <textarea
-                      rows="2"
-                      style="font-size: 14px;"
-                      .value=${banFragments}
-                      placeholder="rm -rf&#10;rm -r"
-                      @input=${(e: Event) => {
-                        const v = (e.target as HTMLTextAreaElement).value;
-                        props.onPatch(["validator", "banFragments"], splitLines(v));
-                      }}
-                    ></textarea>
-                  </div>
-                  <div class="field" style="width: 100%;">
-                    <span style="font-size: 14px;">${t("sandboxSecretPatterns")}</span>
-                    <textarea
-                      rows="3"
-                      style="font-size: 14px; font-family: var(--mono);"
-                      .value=${secretPatterns}
-                      placeholder="sk-[a-zA-Z0-9]{48}&#10;ghp_[a-zA-Z0-9]{36}"
-                      @input=${(e: Event) => {
-                        const v = (e.target as HTMLTextAreaElement).value;
-                        props.onPatch(["validator", "secretPatterns"], splitLines(v));
-                      }}
-                    ></textarea>
-                    <div class="muted" style="font-size: 12px; margin-top: 4px;">${t("sandboxSecretPatternsHint")}</div>
-                  </div>
+        <details class="sandbox-details" style="margin-top: 16px;" >
+          <summary class="sandbox-summary">
+            <span>${t("securitySectionValidator")}</span>
+            <span class="security-help" title=${t("securitySectionValidatorDesc")}>❕</span>
+          </summary>
+          <div class="sandbox-section-body" style="margin-top: 16px;">
+            <div class="muted" style="font-size: 13px; margin-bottom: 12px;">${t("securitySectionValidatorDesc")}</div>
+            <div class="sandbox-form-center">
+              <div class="row" style="align-items: center; gap: 12px; margin-bottom: 16px;">
+                <button
+                  type="button"
+                  class="btn ${validatorEnabled ? "btn-ok" : ""}"
+                  ?disabled=${props.saving}
+                  @click=${() => {
+                    if (props.onToggleValidatorEnabled) {
+                      props.onToggleValidatorEnabled();
+                    } else {
+                      props.onPatch(["validator", "enabled"], !validatorEnabled);
+                    }
+                  }}
+                >
+                  ${validatorEnabled ? t("sandboxActionDisable") : t("sandboxActionEnable")}
+                </button>
+                <span class="muted" style="font-size: 13px;">
+                  ${validatorEnabled ? t("sandboxEnabled") : t("sandboxDisabled")}
+                </span>
+              </div>
+              <div class="row" style="flex-direction: column; gap: 12px;">
+                <div class="field" style="width: 100%;">
+                  <span style="font-size: 14px;">${t("sandboxBanCommands")}</span>
+                  <textarea
+                    rows="2"
+                    style="font-size: 14px;"
+                    .value=${banCommands}
+                    placeholder="dd&#10;mkfs&#10;sudo"
+                    @input=${(e: Event) => {
+                      const v = (e.target as HTMLTextAreaElement).value;
+                      props.onPatch(["validator", "banCommands"], splitLines(v));
+                    }}
+                  ></textarea>
+                </div>
+                <div class="field" style="width: 100%;">
+                  <span style="font-size: 14px;">${t("sandboxBanArguments")}</span>
+                  <textarea
+                    rows="2"
+                    style="font-size: 14px;"
+                    .value=${banArguments}
+                    placeholder="--no-preserve-root&#10;/dev/"
+                    @input=${(e: Event) => {
+                      const v = (e.target as HTMLTextAreaElement).value;
+                      props.onPatch(["validator", "banArguments"], splitLines(v));
+                    }}
+                  ></textarea>
+                </div>
+                <div class="field" style="width: 100%;">
+                  <span style="font-size: 14px;">${t("sandboxBanFragments")}</span>
+                  <textarea
+                    rows="2"
+                    style="font-size: 14px;"
+                    .value=${banFragments}
+                    placeholder="rm -rf&#10;rm -r"
+                    @input=${(e: Event) => {
+                      const v = (e.target as HTMLTextAreaElement).value;
+                      props.onPatch(["validator", "banFragments"], splitLines(v));
+                    }}
+                  ></textarea>
+                </div>
+                <div class="field" style="width: 100%;">
+                  <span style="font-size: 14px;">${t("sandboxSecretPatterns")}</span>
+                  <textarea
+                    rows="3"
+                    style="font-size: 14px; font-family: var(--mono);"
+                    .value=${secretPatterns}
+                    placeholder="sk-[a-zA-Z0-9]{48}&#10;ghp_[a-zA-Z0-9]{36}"
+                    @input=${(e: Event) => {
+                      const v = (e.target as HTMLTextAreaElement).value;
+                      props.onPatch(["validator", "secretPatterns"], splitLines(v));
+                    }}
+                  ></textarea>
+                  <div class="muted" style="font-size: 12px; margin-top: 4px;">${t("sandboxSecretPatternsHint")}</div>
                 </div>
               </div>
 
@@ -258,10 +274,126 @@ export function renderSandbox(props: SandboxProps) {
         </details>
 
         <details class="sandbox-details" style="margin-top: 16px;">
-          <summary class="sandbox-summary">${t("sandboxSectionApprovals")}</summary>
+          <summary class="sandbox-summary">
+            <span>${t("securitySectionApprovalQueue")}</span>
+            <span class="security-help" title=${t("securitySectionApprovalQueueDesc")}>❕</span>
+          </summary>
           <div class="sandbox-section-body" style="margin-top: 16px;">
+            <div class="muted" style="font-size: 13px; margin-bottom: 12px;">${t("securitySectionApprovalQueueDesc")}</div>
+            <div class="sandbox-form-center" style="margin-bottom: 12px;">
+              <div class="row" style="align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; justify-content: flex-start;">
+                <button
+                  type="button"
+                  class="btn ${approvalEnabled ? "btn-ok" : ""}"
+                  ?disabled=${props.saving}
+                  @click=${() => {
+                    if (props.onToggleApprovalEnabled) {
+                      props.onToggleApprovalEnabled();
+                    } else {
+                      props.onPatch(["approvalQueue", "enabled"], !approvalEnabled);
+                    }
+                  }}
+                >
+                  ${approvalEnabled ? t("sandboxActionDisable") : t("sandboxActionEnable")}
+                </button>
+                <span class="muted" style="font-size: 13px;">
+                  ${approvalEnabled ? t("sandboxEnabled") : t("sandboxDisabled")}
+                </span>
+                ${approvalEnabled
+                  ? html`
+                      <div class="row" style="align-items: flex-start; gap: 8px; margin-left: 4px;">
+                        <input
+                          type="checkbox"
+                          id="blockOnApproval"
+                          .checked=${approvalBlockOnApproval}
+                          ?disabled=${props.saving}
+                          @input=${(e: Event) => {
+                            const checked = (e.target as HTMLInputElement).checked;
+                            props.onPatch(["approvalQueue", "blockOnApproval"], checked);
+                          }}
+                        />
+                        <div style="flex: 1; min-width: 220px;">
+                          <label for="blockOnApproval" style="font-size: 14px; cursor: pointer;">
+                            ${t("securityApprovalBlockOnApproval")}
+                            <span class="muted" style="font-size: 12px; margin-left: 8px;">
+                              ${t("securityApprovalBlockOnApprovalHint")}
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    `
+                  : nothing}
+              </div>
+
+              <div class="field" style="width: 100%; margin-top: 10px;">
+                <span style="font-size: 14px;">${t("securityApprovalTimeoutSeconds")}</span>
+                <input
+                  type="text"
+                  .value=${String(approvalTimeoutSeconds)}
+                  placeholder="300"
+                  @input=${(e: Event) => {
+                    const raw = (e.target as HTMLInputElement).value.trim();
+                    const v = raw === "" ? undefined : Number(raw);
+                    props.onPatch(["approvalQueue", "timeoutSeconds"], Number.isNaN(v as number) ? undefined : v);
+                  }}
+                />
+                <div class="muted" style="font-size: 12px; margin-top: 4px;">${t("securityApprovalTimeoutSecondsHint")}</div>
+              </div>
+
+              <div class="field" style="width: 100%; margin-top: 16px;">
+                <span style="font-size: 14px;">${t("securityApprovalAllow")}</span>
+                <textarea
+                  rows="2"
+                  style="font-size: 14px;"
+                  .value=${approvalAllow}
+                  placeholder="ls&#10;pwd&#10;echo"
+                  @input=${(e: Event) => {
+                    const v = (e.target as HTMLTextAreaElement).value;
+                    props.onPatch(["approvalQueue", "allow"], splitLines(v));
+                  }}
+                ></textarea>
+                <div class="muted" style="font-size: 12px; margin-top: 4px;">${t("securityApprovalAllowHint")}</div>
+              </div>
+
+              <div class="field" style="width: 100%; margin-top: 16px;">
+                <span style="font-size: 14px;">${t("securityApprovalAsk")}</span>
+                <textarea
+                  rows="2"
+                  style="font-size: 14px;"
+                  .value=${approvalAsk}
+                  placeholder="rm&#10;mv&#10;cp"
+                  @input=${(e: Event) => {
+                    const v = (e.target as HTMLTextAreaElement).value;
+                    props.onPatch(["approvalQueue", "ask"], splitLines(v));
+                  }}
+                ></textarea>
+                <div class="muted" style="font-size: 12px; margin-top: 4px;">${t("securityApprovalAskHint")}</div>
+              </div>
+
+              <div class="field" style="width: 100%; margin-top: 16px;">
+                <span style="font-size: 14px;">${t("securityApprovalDeny")}</span>
+                <textarea
+                  rows="2"
+                  style="font-size: 14px;"
+                  .value=${approvalDeny}
+                  placeholder="sudo&#10;dd&#10;mkfs"
+                  @input=${(e: Event) => {
+                    const v = (e.target as HTMLTextAreaElement).value;
+                    props.onPatch(["approvalQueue", "deny"], splitLines(v));
+                  }}
+                ></textarea>
+                <div class="muted" style="font-size: 12px; margin-top: 4px;">${t("securityApprovalDenyHint")}</div>
+              </div>
+
+              <div class="row" style="gap: 8px; margin-top: 12px;">
+                <button type="button" class="btn primary" ?disabled=${props.saving} @click=${props.onSave}>
+                  ${props.saving ? t("commonLoading") : t("commonSave")}
+                </button>
+              </div>
+            </div>
+
             <div class="row" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
-              <div class="muted" style="font-size: 13px;">${storePath || ""}</div>
+              <div class="muted" style="font-size: 13px;"></div>
               <button class="btn primary" ?disabled=${props.approvalsLoading} @click=${props.onApprovalsRefresh}>
                 ${props.approvalsLoading ? t("commonLoading") : t("commonRefresh")}
               </button>
@@ -304,7 +436,7 @@ export function renderSandbox(props: SandboxProps) {
                               ${sessionPath ? html`<a class="btn btn--sm" href="${sessionPath}">${t("approvalsViewSession")}</a>` : nothing}
                               ${canAct
                                 ? html`
-                                    <button class="btn btn--sm btn-ok" @click=${() => props.onApprove(e.id, e.ttlSeconds)}>${t("approvalsApprove")}</button>
+                                    <button class="btn btn--sm btn-ok" @click=${() => props.onApprove(e.id)}>${t("approvalsApprove")}</button>
                                     <button class="btn btn--sm" @click=${() => props.onDeny(e.id)}>${t("approvalsDeny")}</button>
                                   `
                                 : nothing}
