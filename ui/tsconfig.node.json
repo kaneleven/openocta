@@ -7,7 +7,6 @@
     "moduleResolution": "NodeNext",
     "strict": true,
     "types": ["node"],
-    "noEmit": true,
     "skipLibCheck": true
   },
   "include": ["vite.config.ts"]

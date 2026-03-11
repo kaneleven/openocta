@@ -135,7 +135,6 @@ import { getSandboxFromConfig } from "./controllers/sandbox.ts";
 import {
   loadApprovalsList,
   approveApproval,
-  whitelistApproval,
   denyApproval,
 } from "./controllers/approvals.ts";
 import {

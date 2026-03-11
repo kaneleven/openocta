@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -42,6 +43,8 @@ type Client struct {
 	// ConnectParams set after successful handshake
 	Connect *protocol.ConnectParams
 	mu      sync.RWMutex
+	// queuedBytes tracks the approximate number of bytes pending in Send.
+	queuedBytes int64
 }
 
 // Hub manages WebSocket clients.
@@ -206,8 +209,8 @@ func (h *Hub) broadcastInternal(event string, payload interface{}, opts *Broadca
 			continue
 		}
 
-		// Check buffered amount (simplified - use channel length as proxy)
-		buffered := len(c.Send) * 256 // Rough estimate: each queued message ~256 bytes
+		// Check buffered amount (approximate bytes pending in Send)
+		buffered := int(atomic.LoadInt64(&c.queuedBytes))
 		slow := buffered > maxBufferedBytes
 
 		if slow && opts != nil && opts.DropIfSlow {
@@ -222,18 +225,20 @@ func (h *Hub) broadcastInternal(event string, payload interface{}, opts *Broadca
 			continue
 		}
 
-		// Send event frame
-		select {
-		case c.Send <- frameJSON:
+		// Send event frame (drop oldest if queue is full to keep newest)
+		if c.enqueue(frameJSON, true) {
 			sentCount++
-		default:
-			// Channel full - treat as slow consumer
-			wsLog.Warn("event channel full, closing connection connId=%s", c.ConnID)
-			c.Conn.Close()
+		} else {
+			droppedCount++
+			wsLog.Warn("event queue full, dropped event (oldest) connId=%s， message=%s", c.ConnID, frameJSON)
 		}
 	}
 
-	wsLog.Debug("broadcast event event=%s seq=%d clients=%d targets=%d sent=%d dropped=%d", event, eventSeq, len(clients), len(targetConnIds), sentCount, droppedCount)
+	seqVal := int64(0)
+	if eventSeq != nil {
+		seqVal = *eventSeq
+	}
+	wsLog.Debug("broadcast event event=%s seq=%d clients=%d targets=%d sent=%d dropped=%d", event, seqVal, len(clients), len(targetConnIds), sentCount, droppedCount)
 }
 
 // ServeWS upgrades HTTP to WebSocket and handles the connection.
@@ -247,7 +252,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	client := &Client{
 		ConnID:   connID,
 		Conn:     conn,
-		Send:     make(chan []byte, 256),
+		Send:     make(chan []byte, 2048),
 		Hub:      h,
 		Handlers: h.handlers,
 		Context:  h.context,
@@ -333,6 +338,7 @@ func (c *Client) handleMessage(data []byte) {
 			if errorBytes, err := json.Marshal(errorRes); err == nil {
 				select {
 				case c.Send <- errorBytes:
+					atomic.AddInt64(&c.queuedBytes, int64(len(errorBytes)))
 					// Successfully sent
 				default:
 					wsLog.Warn("response channel full, dropping message connId=%s id=%s", c.ConnID, id)
@@ -342,6 +348,7 @@ func (c *Client) handleMessage(data []byte) {
 		}
 		select {
 		case c.Send <- b:
+			atomic.AddInt64(&c.queuedBytes, int64(len(b)))
 			// Successfully sent
 			wsLog.Debug("response sent connId=%s id=%s method=%s ok=%v", c.ConnID, id, method, ok)
 		default:
@@ -417,7 +424,7 @@ func (c *Client) handleConnect(id string, params interface{}) {
 		Snapshot: protocol.Snapshot{
 			Presence:     []protocol.PresenceEntry{},
 			Health:       map[string]interface{}{},
-			StateVersion: protocol.StateVersion{0, 0},
+			StateVersion: protocol.StateVersion{Presence: 0, Health: 0},
 			UptimeMs:     0,
 		},
 		Policy: protocol.HelloPolicy{
@@ -439,6 +446,7 @@ func (c *Client) handleConnect(id string, params interface{}) {
 	}
 	select {
 	case c.Send <- msg:
+		atomic.AddInt64(&c.queuedBytes, int64(len(msg)))
 		// Successfully sent
 	default:
 		wsLog.Warn("hello-ok channel full, dropping message connId=%s id=%s", c.ConnID, id)
@@ -459,9 +467,35 @@ func (c *Client) sendError(id string, code string, msg string) {
 	}
 	select {
 	case c.Send <- b:
+		atomic.AddInt64(&c.queuedBytes, int64(len(b)))
 		// Successfully sent
 	default:
 		wsLog.Warn("error response channel full, dropping message connId=%s id=%s", c.ConnID, id)
+	}
+}
+
+// enqueue pushes msg into Send. If dropOldest is true, it will drop queued messages
+// (oldest first) until it can enqueue the newest message.
+func (c *Client) enqueue(msg []byte, dropOldest bool) bool {
+	for {
+		select {
+		case c.Send <- msg:
+			atomic.AddInt64(&c.queuedBytes, int64(len(msg)))
+			return true
+		default:
+			if !dropOldest {
+				return false
+			}
+			// Drop one oldest message to make room, then retry.
+			select {
+			case old := <-c.Send:
+				atomic.AddInt64(&c.queuedBytes, -int64(len(old)))
+				// retry
+			default:
+				// Nothing to drop, give up.
+				return false
+			}
+		}
 	}
 }
 
@@ -474,6 +508,9 @@ func (c *Client) writePump() {
 	for {
 		select {
 		case msg, ok := <-c.Send:
+			if ok {
+				atomic.AddInt64(&c.queuedBytes, -int64(len(msg)))
+			}
 			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})

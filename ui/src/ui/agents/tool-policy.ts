@@ -1,4 +1,7 @@
-import type { AnyAgentTool } from "./tools/common.js";
+export type AnyAgentTool = {
+  name: string;
+  execute?: (...args: any[]) => unknown;
+};
 
 export type ToolProfileId = "minimal" | "coding" | "messaging" | "full";
 

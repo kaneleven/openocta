@@ -130,6 +130,7 @@ func (s *Service) Add(input JobCreate) (CronJob, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := time.Now().UnixMilli()
+	next := ComputeNextRunAtMs(input.Schedule, now)
 	j := CronJob{
 		ID:            uuid.New().String(),
 		Name:          input.Name,
@@ -142,6 +143,9 @@ func (s *Service) Add(input JobCreate) (CronJob, error) {
 		WakeMode:      input.WakeMode,
 		Payload:       input.Payload,
 		Delivery:      input.Delivery,
+		State: CronJobState{
+			NextRunAtMs: &next,
+		},
 	}
 	if j.SessionTarget == "" {
 		j.SessionTarget = "main"

@@ -52,6 +52,7 @@ type SettingsHost = {
   logsAtBottom: boolean;
   eventLog: unknown[];
   eventLogBuffer: unknown[];
+  sandboxForm?: unknown;
   basePath: string;
   agentsList?: AgentsListResult | null;
   agentsSelectedId?: string | null;
@@ -195,26 +196,26 @@ export async function refreshActiveTab(host: SettingsHost) {
     await loadSkills(host as unknown as OpenClawApp);
   }
   if (host.tab === "mcp") {
-    await loadConfig(host as unknown as OpenClawApp);
-    syncLlmTraceFromConfig(host as unknown as OpenClawApp);
+    await loadConfig(host as unknown as Parameters<typeof loadConfig>[0]);
+    syncLlmTraceFromConfig(host as unknown as Parameters<typeof syncLlmTraceFromConfig>[0]);
   }
   if (host.tab === "llmTrace") {
-    await loadConfig(host as unknown as OpenClawApp);
-    syncLlmTraceFromConfig(host as unknown as OpenClawApp);
-    await loadTraceList(host as unknown as OpenClawApp);
+    await loadConfig(host as unknown as Parameters<typeof loadConfig>[0]);
+    syncLlmTraceFromConfig(host as unknown as Parameters<typeof syncLlmTraceFromConfig>[0]);
+    await loadTraceList(host as unknown as Parameters<typeof loadTraceList>[0]);
   }
   if (host.tab === "sandbox") {
-    await loadConfig(host as unknown as OpenClawApp);
-    host.sandboxForm = syncSandboxFromConfig(host as unknown as OpenClawApp);
-    await loadApprovalsList(host as unknown as OpenClawApp);
+    await loadConfig(host as unknown as Parameters<typeof loadConfig>[0]);
+    host.sandboxForm = syncSandboxFromConfig(host as unknown as Parameters<typeof syncSandboxFromConfig>[0]);
+    await loadApprovalsList(host as unknown as Parameters<typeof loadApprovalsList>[0]);
   }
   if (host.tab === "digitalEmployee") {
-    await loadDigitalEmployees(host as unknown as OpenClawApp);
+    await loadDigitalEmployees(host as unknown as Parameters<typeof loadDigitalEmployees>[0]);
   }
   if (host.tab === "agents") {
     await loadAgents(host as unknown as OpenClawApp);
-    await loadConfig(host as unknown as OpenClawApp);
-    syncLlmTraceFromConfig(host as unknown as OpenClawApp);
+    await loadConfig(host as unknown as Parameters<typeof loadConfig>[0]);
+    syncLlmTraceFromConfig(host as unknown as Parameters<typeof syncLlmTraceFromConfig>[0]);
     const agentIds = host.agentsList?.agents?.map((entry) => entry.id) ?? [];
     if (agentIds.length > 0) {
       void loadAgentIdentities(host as unknown as OpenClawApp, agentIds);
@@ -237,8 +238,8 @@ export async function refreshActiveTab(host: SettingsHost) {
   if (host.tab === "nodes") {
     await loadNodes(host as unknown as OpenClawApp);
     await loadDevices(host as unknown as OpenClawApp);
-    await loadConfig(host as unknown as OpenClawApp);
-    syncLlmTraceFromConfig(host as unknown as OpenClawApp);
+    await loadConfig(host as unknown as Parameters<typeof loadConfig>[0]);
+    syncLlmTraceFromConfig(host as unknown as Parameters<typeof syncLlmTraceFromConfig>[0]);
     await loadExecApprovals(host as unknown as OpenClawApp);
   }
   if (host.tab === "chat") {
@@ -250,12 +251,12 @@ export async function refreshActiveTab(host: SettingsHost) {
   }
   if (host.tab === "config") {
     await loadConfigSchema(host as unknown as OpenClawApp);
-    await loadConfig(host as unknown as OpenClawApp);
-    syncLlmTraceFromConfig(host as unknown as OpenClawApp);
+    await loadConfig(host as unknown as Parameters<typeof loadConfig>[0]);
+    syncLlmTraceFromConfig(host as unknown as Parameters<typeof syncLlmTraceFromConfig>[0]);
   }
   if (host.tab === "envVars" || host.tab === "models") {
-    await loadConfig(host as unknown as OpenClawApp);
-    syncLlmTraceFromConfig(host as unknown as OpenClawApp);
+    await loadConfig(host as unknown as Parameters<typeof loadConfig>[0]);
+    syncLlmTraceFromConfig(host as unknown as Parameters<typeof syncLlmTraceFromConfig>[0]);
   }
   if (host.tab === "debug") {
     await loadDebug(host as unknown as OpenClawApp);

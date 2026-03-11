@@ -178,10 +178,19 @@ func CronRemoveHandler(opts HandlerOpts) error {
 	if jobID == "" {
 		opts.Respond(false, nil, &protocol.ErrorShape{
 			Code:    protocol.ErrCodeInvalidRequest,
-			Message: "invalid cron.remove params: missing id",
+			Message: "invalid cron.remove params: missing id/jobId",
 		}, nil)
 		return nil
 	}
+
+	removed := true
+	if svc, ok := ctx.CronService.(interface {
+		GetJob(string) (cron.CronJob, bool)
+	}); ok {
+		_, found := svc.GetJob(jobID)
+		removed = found
+	}
+
 	err := ctx.CronService.Remove(jobID)
 	if err != nil {
 		opts.Respond(false, nil, &protocol.ErrorShape{
@@ -190,7 +199,7 @@ func CronRemoveHandler(opts HandlerOpts) error {
 		}, nil)
 		return nil
 	}
-	opts.Respond(true, map[string]interface{}{"ok": true, "removed": true}, nil, nil)
+	opts.Respond(true, map[string]interface{}{"ok": true, "removed": removed}, nil, nil)
 	return nil
 }
 

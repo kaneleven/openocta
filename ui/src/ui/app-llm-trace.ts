@@ -11,7 +11,9 @@ export function syncLlmTraceFromConfig(host: AppViewState) {
     const gw = (cfg as Record<string, unknown>).gateway;
     if (gw && typeof gw === "object") {
       const lt = (gw as Record<string, unknown>).llmTrace;
-      host.llmTraceEnabled = lt && typeof lt === "object" && (lt as Record<string, unknown>).enabled === true;
+      host.llmTraceEnabled = Boolean(
+        lt && typeof lt === "object" && (lt as Record<string, unknown>).enabled === true,
+      );
       return;
     }
   }

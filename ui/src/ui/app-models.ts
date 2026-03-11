@@ -141,13 +141,16 @@ export function handleModelsPatchModelEnv(host: AppViewState, providerKey: strin
 }
 
 export function handleModelsRemoveModel(host: AppViewState, providerKey: string, modelId: string) {
-  const base = cloneConfigObject(host.configForm ?? host.configSnapshot?.config ?? {});
-  if (!base.models?.providers) return;
-  const prov = base.models.providers[providerKey];
+  const base = cloneConfigObject(host.configForm ?? host.configSnapshot?.config ?? {}) as {
+    models?: { providers?: Record<string, ModelProvider> };
+  };
+  const providers = base.models?.providers;
+  if (!providers) return;
+  const prov = providers[providerKey];
   if (!prov?.models) return;
-  base.models.providers[providerKey] = {
+  providers[providerKey] = {
     ...prov,
-    models: prov.models.filter((m) => m.id !== modelId),
+    models: prov.models.filter((m: { id: string }) => m.id !== modelId),
   };
   host.configForm = base;
   host.configFormDirty = true;
@@ -203,8 +206,12 @@ export function handleModelsSave(host: AppViewState) {
     }
     sanitizedProviders[k] = prov;
   }
+  const existingModels =
+    host.configForm?.models && typeof host.configForm.models === "object" && !Array.isArray(host.configForm.models)
+      ? (host.configForm.models as Record<string, unknown>)
+      : {};
   const patch: Record<string, unknown> = {
-    models: { ...host.configForm?.models, providers: sanitizedProviders },
+    models: { ...existingModels, providers: sanitizedProviders },
   };
   const envForm = host.configForm?.env as { vars?: Record<string, string>; modelEnv?: Record<string, Record<string, string>> } | undefined;
   const modelEnv = envForm?.modelEnv ?? {};

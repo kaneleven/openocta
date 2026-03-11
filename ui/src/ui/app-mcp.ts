@@ -89,7 +89,9 @@ export async function handleMcpAddSubmit(host: AppViewState) {
   if (!mcp.servers) {
     mcp.servers = {};
   }
-  mcp.servers[key] = { ...host.mcpAddDraft, enabled: host.mcpAddDraft.enabled ?? true };
+  const draftEnabled = (host.mcpAddDraft as { enabled?: unknown }).enabled;
+  const enabled = typeof draftEnabled === "boolean" ? draftEnabled : true;
+  mcp.servers[key] = { ...(host.mcpAddDraft as McpServerEntry), enabled };
   host.configForm = base;
   host.configFormDirty = true;
   await saveConfigPatch(host, { mcp: base.mcp });
