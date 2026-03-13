@@ -10,14 +10,7 @@ import { loadAgentSkills } from "./controllers/agent-skills.ts";
 import { loadAgents } from "./controllers/agents.ts";
 import { loadChannels } from "./controllers/channels.ts";
 import { loadChatHistory } from "./controllers/chat.ts";
-import {
-  applyConfig,
-  loadConfig,
-  runUpdate,
-  saveConfig,
-  updateConfigFormValue,
-  removeConfigFormValue,
-} from "./controllers/config.ts";
+import { applyConfig, loadConfig, runUpdate, saveConfig, saveConfigPatch, updateConfigFormValue, removeConfigFormValue } from "./controllers/config.ts";
 import {
   loadCronRuns,
   toggleCronJob,
@@ -1977,21 +1970,8 @@ export function renderApp(state: AppViewState) {
             ? renderEnvVars({
                 vars:
                   (state.configForm?.env as { vars?: Record<string, string> } | undefined)?.vars ??
-                  (state.configSnapshot?.config as { env?: { vars?: Record<string, string> } } | undefined)
-                    ?.env?.vars ??
+                  (state.configSnapshot?.config as { env?: { vars?: Record<string, string> } } | undefined)?.env?.vars ??
                   {},
-                modelEnv:
-                  (state.configForm?.env as { modelEnv?: Record<string, Record<string, string>> } | undefined)
-                    ?.modelEnv ??
-                  (state.configSnapshot?.config as { env?: { modelEnv?: Record<string, Record<string, string>> } } | undefined)
-                    ?.env?.modelEnv ??
-                  {},
-                shellEnv:
-                  (state.configForm?.env as { shellEnv?: { enabled?: boolean; timeoutMs?: number } } | undefined)
-                    ?.shellEnv ??
-                  (state.configSnapshot?.config as { env?: { shellEnv?: { enabled?: boolean; timeoutMs?: number } } } | undefined)
-                    ?.env?.shellEnv ??
-                  null,
                 dirty: state.configFormDirty,
                 loading: state.configLoading,
                 saving: state.configSaving,
@@ -1999,36 +1979,23 @@ export function renderApp(state: AppViewState) {
                 onVarsChange: (next) => {
                   updateConfigFormValue(state, ["env", "vars"], next);
                 },
-                onModelEnvChange: (next) => {
-                  updateConfigFormValue(state, ["env", "modelEnv"], next);
-                },
-                onShellEnvChange: (next) => {
-                  updateConfigFormValue(state, ["env", "shellEnv"], next);
-                },
                 onSave: async () => {
-                  const envForm = state.configForm?.env as {
-                    vars?: Record<string, string>;
-                    modelEnv?: Record<string, Record<string, string>>;
-                    shellEnv?: { enabled?: boolean; timeoutMs?: number };
-                  } | undefined;
+                  const envForm = state.configForm?.env as { vars?: Record<string, string> } | undefined;
                   const raw = envForm?.vars ?? {};
                   const filtered: Record<string, string> = {};
                   for (const [k, v] of Object.entries(raw)) {
                     if (k.trim()) filtered[k.trim()] = v;
                   }
+                  // 更新表单中的 env.vars
                   updateConfigFormValue(state, ["env", "vars"], filtered);
-                  const rawModelEnv = envForm?.modelEnv ?? {};
-                  const filteredModelEnv: Record<string, Record<string, string>> = {};
-                  for (const [modelRef, ev] of Object.entries(rawModelEnv)) {
-                    if (!ev || typeof ev !== "object") continue;
-                    const f: Record<string, string> = {};
-                    for (const [k, v] of Object.entries(ev)) {
-                      if (k.trim() && k !== "__new__") f[k.trim()] = v;
-                    }
-                    if (Object.keys(f).length > 0) filteredModelEnv[modelRef] = f;
-                  }
-                  updateConfigFormValue(state, ["env", "modelEnv"], filteredModelEnv);
-                  await saveConfig(state);
+
+                  // 基于当前配置构造 env 对象，保留其它字段（例如 modelEnv、shellEnv 等）
+                  const baseEnv =
+                    (state.configForm?.env as Record<string, unknown> | undefined) ??
+                    ((state.configSnapshot?.config as { env?: Record<string, unknown> } | undefined)?.env ?? {});
+                  const nextEnv = { ...baseEnv, vars: filtered };
+
+                  await saveConfigPatch(state, { env: nextEnv });
                 },
                 onReload: () => loadConfig(state),
               })

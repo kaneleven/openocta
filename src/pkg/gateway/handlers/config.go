@@ -424,6 +424,23 @@ func mergePatchEnv(base, patch map[string]interface{}) map[string]interface{} {
 			delete(result, k)
 			continue
 		}
+		if k == "vars" {
+			// env.vars 采用整体替换语义：前端会发送完整的 vars 对象，
+			// 省略的 key 视为删除，而不是保留旧值。
+			if patchVars, ok := v.(map[string]interface{}); ok {
+				newVars := make(map[string]interface{}, len(patchVars))
+				for kk, vv := range patchVars {
+					if vv != nil {
+						newVars[kk] = vv
+					}
+				}
+				result["vars"] = newVars
+				continue
+			}
+			// 非对象时直接覆盖
+			result[k] = v
+			continue
+		}
 		if k == "modelEnv" {
 			baseModelEnv, _ := result["modelEnv"].(map[string]interface{})
 			patchModelEnv, ok := v.(map[string]interface{})

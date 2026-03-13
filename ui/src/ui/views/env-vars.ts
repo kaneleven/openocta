@@ -8,15 +8,11 @@ export type ShellEnvConfig = {
 
 export type EnvVarsProps = {
   vars: Record<string, string>;
-  modelEnv: Record<string, Record<string, string>>;
-  shellEnv: ShellEnvConfig | null;
   dirty: boolean;
   loading: boolean;
   saving: boolean;
   connected: boolean;
   onVarsChange: (vars: Record<string, string>) => void;
-  onModelEnvChange: (modelEnv: Record<string, Record<string, string>>) => void;
-  onShellEnvChange: (shellEnv: ShellEnvConfig | null) => void;
   onSave: () => void;
   onReload: () => void;
 };
@@ -128,14 +124,12 @@ function renderVarsTable(
 }
 
 export function renderEnvVars(props: EnvVarsProps) {
-  const { vars, modelEnv, shellEnv, dirty, loading, saving, connected, onVarsChange, onModelEnvChange, onShellEnvChange, onSave, onReload } = props;
+  const { vars, dirty, loading, saving, connected, onVarsChange, onSave, onReload } = props;
   const canSave = connected && dirty && !saving && !loading;
 
   const handleVarsAdd = () => {
     onVarsChange({ ...vars, "": "" });
   };
-
-  const modelEnvEntries = Object.entries(modelEnv ?? {});
 
   return html`
     <div class="env-vars">
@@ -165,95 +159,6 @@ export function renderEnvVars(props: EnvVarsProps) {
           <p class="muted" style="font-size: 12px; margin-bottom: 12px;">${t("configEnvVarsDesc")}</p>
           <div class="env-vars__list">
             ${renderVarsTable(vars, connected, onVarsChange, handleVarsAdd)}
-          </div>
-        </section>
-
-        <section class="env-vars__section card" style="margin-bottom: 16px;">
-          <h3 class="card-title" style="margin-bottom: 8px;">${t("envModelEnvSection")}</h3>
-          <p class="muted" style="font-size: 12px; margin-bottom: 12px;">${t("envVarsKeyPlaceholder")} = ${t("envVarsValuePlaceholder")}，按 provider/modelId 分组</p>
-          <div class="env-vars__list">
-            ${modelEnvEntries.length === 0
-              ? html`<p class="env-vars__empty">${t("envVarsEmpty")}</p>`
-              : html`
-                  ${modelEnvEntries.map(
-                    ([modelRef, envVars]) => html`
-                      <div style="margin-bottom: 16px; padding: 12px; border: 1px solid var(--border-color, #eee); border-radius: 8px;">
-                        <div style="font-weight: 500; margin-bottom: 8px;"><code>${modelRef}</code></div>
-                        ${renderVarsTable(
-                          envVars ?? {},
-                          connected,
-                          (next) => {
-                            const updated = { ...modelEnv };
-                            updated[modelRef] = next;
-                            onModelEnvChange(updated);
-                          },
-                          () => {
-                            const updated = { ...modelEnv };
-                            updated[modelRef] = { ...(updated[modelRef] ?? {}), "": "" };
-                            onModelEnvChange(updated);
-                          },
-                        )}
-                        <button
-                          class="btn btn--ghost btn--sm"
-                          style="margin-top: 8px;"
-                          ?disabled=${!connected}
-                          @click=${() => {
-                            const updated = { ...modelEnv };
-                            delete updated[modelRef];
-                            onModelEnvChange(updated);
-                          }}
-                        >
-                          ${t("commonDelete")} ${modelRef}
-                        </button>
-                      </div>
-                    `,
-                  )}
-                  <button
-                    class="btn btn--secondary"
-                    ?disabled=${!connected}
-                    @click=${() => {
-                      const modelRef = prompt("provider/modelId (e.g. ollama/llama3.3):")?.trim();
-                      if (modelRef) {
-                        onModelEnvChange({ ...modelEnv, [modelRef]: {} });
-                      }
-                    }}
-                  >
-                    + ${t("envVarsAdd")} modelEnv
-                  </button>
-                `}
-          </div>
-        </section>
-
-        <section class="env-vars__section card" style="margin-bottom: 16px;">
-          <h3 class="card-title" style="margin-bottom: 8px;">${t("envShellEnvSection")}</h3>
-          <p class="muted" style="font-size: 12px; margin-bottom: 12px;">Shell 环境导入配置</p>
-          <div class="config-form">
-            <div class="field">
-              <span>Enabled</span>
-              <input
-                type="checkbox"
-                ?checked=${shellEnv?.enabled ?? false}
-                ?disabled=${!connected}
-                @change=${(e: Event) => {
-                  const checked = (e.target as HTMLInputElement).checked;
-                  onShellEnvChange({ ...(shellEnv ?? {}), enabled: checked });
-                }}
-              />
-            </div>
-            <div class="field">
-              <span>Timeout (ms)</span>
-              <input
-                type="number"
-                .value=${String(shellEnv?.timeoutMs ?? "")}
-                placeholder="e.g. 5000"
-                ?disabled=${!connected}
-                @input=${(e: Event) => {
-                  const v = (e.target as HTMLInputElement).value;
-                  const n = v ? parseInt(v, 10) : undefined;
-                  onShellEnvChange({ ...(shellEnv ?? {}), timeoutMs: n });
-                }}
-              />
-            </div>
           </div>
         </section>
       </div>

@@ -178,7 +178,6 @@ func New(ctx context.Context, opts Options) (*Runtime, error) {
 					if req.Approval == nil {
 						return events.PermissionAsk, nil
 					}
-
 					// 如果审批已过期，则再次进入人工审批
 					if req.Approval.IsExpired(time.Now()) {
 						return events.PermissionAsk, nil
@@ -243,6 +242,7 @@ func New(ctx context.Context, opts Options) (*Runtime, error) {
 			}
 		}
 	}
+
 	// todo: 生产环境建议去掉，仅用于开发环境
 	//apiOpts.OTEL = api.OTELConfig{
 	//	Enabled:     true,
@@ -257,7 +257,10 @@ func New(ctx context.Context, opts Options) (*Runtime, error) {
 			traceMW,
 		}
 	}
-
+	// 添加环境变量
+	if opts.Config.Env != nil {
+		apiOpts.SettingsOverrides.Env = opts.Config.Env.Vars
+	}
 	rt, err := api.New(ctx, apiOpts)
 	if err != nil {
 		return nil, err
@@ -516,7 +519,10 @@ func writeApprovalQueueSettings(env func(string) string, cfg *config.SandboxAppr
 	settingsPath := getSettingsPath(env)
 
 	// Build permissions config
-	perms := &agentsdkConfg.PermissionsConfig{}
+	perms := &agentsdkConfg.PermissionsConfig{
+		DefaultMode:                  "bypassPermissions",
+		DisableBypassPermissionsMode: "enable",
+	}
 
 	// Add allow rules
 	if len(cfg.Allow) > 0 {
