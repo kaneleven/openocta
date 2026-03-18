@@ -63,6 +63,9 @@ func New(ctx context.Context, opts Options) (*Runtime, error) {
 		Tools:        tools,
 		ProjectRoot:  projectRoot,
 	}
+	if apiOpts.SettingsOverrides == nil {
+		apiOpts.SettingsOverrides = &agentsdkConfg.Settings{}
+	}
 	// 添加环境变量：1) 写入 SettingsOverrides.Env 供 hooks/settings 使用；2) 写入进程环境供 bash 等工具继承
 	if opts.Config.Env != nil && len(opts.Config.Env.Vars) > 0 {
 		apiOpts.SettingsOverrides.Env = opts.Config.Env.Vars
