@@ -71,6 +71,22 @@ export function renderTutorials(props: TutorialsProps) {
     });
 
   const embedUrl = props.playingLink ? toBilibiliEmbedUrl(props.playingLink) : null;
+  const toolbarActions = html`
+    <div class="emp-toolbar__actions">
+      <div class="emp-search">
+        <input
+          class="emp-search__input"
+          type="text"
+          placeholder="搜索课程/课时"
+          .value=${props.query}
+          ?disabled=${props.loading}
+          @input=${(e: Event) => props.onQueryChange((e.target as HTMLInputElement).value)}
+        />
+        <span class="emp-search__icon" aria-hidden="true">🔍</span>
+      </div>
+      <button class="btn" @click=${props.onRefresh} ?disabled=${props.loading}>刷新</button>
+    </div>
+  `;
 
   if (embedUrl) {
     return html`
@@ -110,33 +126,21 @@ export function renderTutorials(props: TutorialsProps) {
       <section class="emp-list-wrap">
         <div class="emp-content">
           <div class="emp-main">
-            <div class="emp-toolbar">
-              <h2 class="emp-toolbar__title">OpenOcta 教程</h2>
-              <div class="emp-toolbar__actions">
-                <div class="emp-search">
-                  <input
-                    class="emp-search__input"
-                    type="text"
-                    placeholder="搜索课程/课时"
-                    .value=${props.query}
-                    ?disabled=${props.loading}
-                    @input=${(e: Event) => props.onQueryChange((e.target as HTMLInputElement).value)}
-                  />
-                  <span class="emp-search__icon" aria-hidden="true">🔍</span>
-                </div>
-                <button class="btn" @click=${props.onRefresh} ?disabled=${props.loading}>刷新</button>
-              </div>
-            </div>
-
             ${props.error ? html`<div class="callout danger" style="margin-bottom: 16px;">${props.error}</div>` : nothing}
 
             <div class="tutorials-list" style="margin-top: 14px;">
           ${!activeCategory
             ? html`<div class="emp-empty">暂无分类数据，请点击"刷新"。</div>`
-            : courses.length
-              ? html`
-                  <div class="card tutorials-card">
-                    ${courses.map((course, courseIdx) => {
+            : html`
+                <div class="emp-section__header">
+                  <h3 class="emp-section__title">${activeCategory.name}</h3>
+                  ${toolbarActions}
+                </div>
+                ${
+                  courses.length
+                    ? html`
+                        <div class="card tutorials-card">
+                          ${courses.map((course, courseIdx) => {
                       const isStandalone = (course.course_type ?? "").trim().toLowerCase() === "standalone";
                       const lessons = (course.lessons ?? [])
                         .slice()
@@ -208,9 +212,11 @@ export function renderTutorials(props: TutorialsProps) {
                         </details>
                       `;
                     })}
-                  </div>
-                `
-              : html`<div class="emp-empty">没有匹配的课程/课时</div>`}
+                        </div>
+                      `
+                    : html`<div class="emp-empty">没有匹配的课程/课时</div>`
+                }
+              `}
             </div>
           </div>
         </div>

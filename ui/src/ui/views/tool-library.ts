@@ -233,6 +233,30 @@ export function renderToolLibrary(props: ToolLibraryProps) {
           .map(([cat, items]) => ({ title: cat === "其它" ? "其它" : cat, items }))
       : [{ title: effectiveCategory, items: filteredItems }];
 
+  const toolbarActions = html`
+    <div class="emp-toolbar__actions">
+      <div class="emp-search">
+        <input
+          class="emp-search__input"
+          type="text"
+          placeholder="搜索 MCP 名称或描述..."
+          .value=${props.query}
+          ?disabled=${props.loading}
+          @input=${(e: Event) => props.onQueryChange((e.target as HTMLInputElement).value)}
+        />
+        <span class="emp-search__icon" aria-hidden="true">🔍</span>
+      </div>
+      <button class="btn" @click=${props.onRefresh} ?disabled=${props.loading}>刷新</button>
+      ${props.onAddServer
+        ? html`
+            <button class="btn primary" ?disabled=${props.loading} @click=${props.onAddServer}>
+              ${t("mcpAddServer")}
+            </button>
+          `
+        : nothing}
+    </div>
+  `;
+
   const showDetailModal = props.selectedDetail !== null;
   // 勿用 ??：onDetailClose() 返回 void/undefined 时仍会误触发 onSelect(-1) → 请求 mcps/-1
   const closeDetail = () =>
@@ -243,33 +267,6 @@ export function renderToolLibrary(props: ToolLibraryProps) {
       <section class="emp-list-wrap">
         <div class="emp-content">
           <div class="emp-main">
-            <div class="emp-toolbar">
-              <h2 class="emp-toolbar__title">${effectiveCategory === "__all__" ? "工具库（MCP）" : effectiveCategory}</h2>
-              <div class="emp-toolbar__actions">
-                <div class="row" style="gap: 8px; flex-wrap: wrap; align-items: center;">
-                  <div class="emp-search">
-                    <input
-                      class="emp-search__input"
-                      type="text"
-                      placeholder="搜索 MCP 名称或描述..."
-                      .value=${props.query}
-                      ?disabled=${props.loading}
-                      @input=${(e: Event) => props.onQueryChange((e.target as HTMLInputElement).value)}
-                    />
-                    <span class="emp-search__icon" aria-hidden="true">🔍</span>
-                  </div>
-                  ${props.onAddServer
-                    ? html`
-                        <button class="btn primary" ?disabled=${props.loading} @click=${props.onAddServer}>
-                          ${t("mcpAddServer")}
-                        </button>
-                      `
-                    : nothing}
-                  <button class="btn" @click=${props.onRefresh} ?disabled=${props.loading}>刷新</button>
-                </div>
-              </div>
-            </div>
-
             ${
               props.addModalOpen && props.onAddClose
                 ? html`
@@ -429,11 +426,14 @@ export function renderToolLibrary(props: ToolLibraryProps) {
                 : html`
                       <div class="emp-sections">
                         ${sectionsFixed.map(
-                          (section) =>
+                          (section, index) =>
                             section.items.length > 0
                               ? html`
                                   <div class="emp-section">
-                                    <h3 class="emp-section__title">${section.title}</h3>
+                                    <div class="emp-section__header">
+                                      <h3 class="emp-section__title">${section.title}</h3>
+                                      ${index === 0 ? toolbarActions : nothing}
+                                    </div>
                                     <div class="emp-grid">
                                       ${section.items.map((it) => {
                                         const active = props.selectedId === it.id;

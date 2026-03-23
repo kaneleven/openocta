@@ -555,9 +555,6 @@ export function renderApp(state: AppViewState) {
                     const effectiveCategory = (state.employeeMarketCategory ?? "").trim() || "__all__";
                     return html`
                       <div class="nav-group">
-                        <button class="nav-label nav-label--static" type="button">
-                          <span class="nav-label__text">分类</span>
-                        </button>
                         <div class="nav-group__items">
                           <div class="emp-categories">
                           ${orderedCategories.map((catKey) => {
@@ -591,9 +588,6 @@ export function renderApp(state: AppViewState) {
                       const effectiveCategory = (state.skillLibraryCategory ?? "").trim() || "__all__";
                       return html`
                         <div class="nav-group">
-                          <button class="nav-label nav-label--static" type="button">
-                            <span class="nav-label__text">分类</span>
-                          </button>
                           <div class="nav-group__items">
                             <div class="emp-categories">
                             ${orderedCategories.map((catKey) => {
@@ -626,9 +620,6 @@ export function renderApp(state: AppViewState) {
                         const effectiveCategory = (state.toolLibraryCategory ?? "").trim() || "__all__";
                         return html`
                           <div class="nav-group">
-                            <button class="nav-label nav-label--static" type="button">
-                              <span class="nav-label__text">分类</span>
-                            </button>
                             <div class="nav-group__items">
                               <div class="emp-categories">
                               ${orderedCategories.map((catKey) => {
@@ -660,9 +651,6 @@ export function renderApp(state: AppViewState) {
                           const activeId = state.tutorialsSelectedCategoryId;
                           return html`
                             <div class="nav-group">
-                              <button class="nav-label nav-label--static" type="button">
-                                <span class="nav-label__text">分类</span>
-                              </button>
                               <div class="nav-group__items">
                                 <div class="emp-categories">
                                 ${orderedCategories.length === 0

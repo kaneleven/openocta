@@ -225,6 +225,24 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
           .map((name) => ({ name, items: grouped.get(name) ?? [] }))
       : [{ name: activeCategory, items: grouped.get(activeCategory) ?? [] }];
 
+  const toolbarActions = html`
+    <div class="emp-toolbar__actions">
+      <div class="emp-search">
+        <input
+          class="emp-search__input"
+          type="text"
+          placeholder="搜索技能"
+          .value=${props.query}
+          ?disabled=${props.loading}
+          @input=${(e: Event) => props.onQueryChange((e.target as HTMLInputElement).value)}
+        />
+        <span class="emp-search__icon" aria-hidden="true">🔍</span>
+      </div>
+      <button class="btn" @click=${props.onRefresh} ?disabled=${props.loading}>刷新</button>
+      <button class="btn primary" ?disabled=${props.loading} @click=${props.onAddClick}>${t("skillsAdd")}</button>
+    </div>
+  `;
+
   const showDetailModal = Boolean(props.selectedFolder);
   const closeDetail = () =>
     props.onDetailClose ? props.onDetailClose() : props.onSelect("");
@@ -234,27 +252,6 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
       <section class="emp-list-wrap">
         <div class="emp-content">
           <div class="emp-main">
-            <div class="emp-toolbar">
-              <h2 class="emp-toolbar__title">${activeCategory === "__all__" ? "技能库" : activeCategory}</h2>
-              <div class="emp-toolbar__actions">
-                <div class="row" style="gap: 8px; flex-wrap: wrap; align-items: center;">
-                  <div class="emp-search">
-                    <input
-                      class="emp-search__input"
-                      type="text"
-                      placeholder="搜索技能"
-                      .value=${props.query}
-                      ?disabled=${props.loading}
-                      @input=${(e: Event) => props.onQueryChange((e.target as HTMLInputElement).value)}
-                    />
-                    <span class="emp-search__icon" aria-hidden="true">🔍</span>
-                  </div>
-                  <button class="btn" @click=${props.onRefresh} ?disabled=${props.loading}>刷新</button>
-                  <button class="btn primary" ?disabled=${props.loading} @click=${props.onAddClick}>${t("skillsAdd")}</button>
-                </div>
-              </div>
-            </div>
-
             ${props.error ? html`<div class="callout danger" style="margin-bottom: 16px;">${props.error}</div>` : nothing}
             ${props.installSuccess ? html`<div class="callout success" style="margin-bottom: 16px;">${props.installSuccess}</div>` : nothing}
 
@@ -395,9 +392,12 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
                 : html`
                     <div class="emp-sections">
                       ${orderedGroups.map(
-                        (group) => html`
+                        (group, index) => html`
                           <div class="emp-section">
-                            <h3 class="emp-section__title">${group.name}</h3>
+                            <div class="emp-section__header">
+                              <h3 class="emp-section__title">${group.name}</h3>
+                              ${index === 0 ? toolbarActions : nothing}
+                            </div>
                             <div class="emp-grid">
                               ${group.items.map((it) => {
                                 const active = props.selectedFolder === it.folder;

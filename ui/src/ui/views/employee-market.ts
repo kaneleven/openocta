@@ -244,30 +244,29 @@ export function renderEmployeeMarket(props: EmployeeMarketProps) {
           .map(([cat, items]) => ({ title: cat === "其它" ? "其它" : cat, items }))
       : [{ title: effectiveCategory, items: filteredItems }];
 
+  const toolbarActions = html`
+    <div class="emp-toolbar__actions">
+      <div class="emp-search">
+        <input
+          class="emp-search__input"
+          type="text"
+          placeholder="搜索"
+          .value=${props.query}
+          ?disabled=${props.loading}
+          @input=${(e: Event) => props.onQueryChange((e.target as HTMLInputElement).value)}
+        />
+        <span class="emp-search__icon" aria-hidden="true">🔍</span>
+      </div>
+      <button class="btn" @click=${props.onRefresh} ?disabled=${props.loading}>刷新</button>
+      ${props.onAdd ? html`<button class="btn primary" @click=${props.onAdd}>新增</button>` : nothing}
+    </div>
+  `;
+
   return html`
     <main class="emp-page">
       <section class="emp-list-wrap">
         <div class="emp-content">
           <div class="emp-main">
-            <div class="emp-toolbar">
-              <h2 class="emp-toolbar__title">${effectiveCategory === "__all__" ? "推荐员工" : effectiveCategory}</h2>
-              <div class="emp-toolbar__actions">
-                <div class="emp-search">
-                  <input
-                    class="emp-search__input"
-                    type="text"
-                    placeholder="搜索"
-                    .value=${props.query}
-                    ?disabled=${props.loading}
-                    @input=${(e: Event) => props.onQueryChange((e.target as HTMLInputElement).value)}
-                  />
-                  <span class="emp-search__icon" aria-hidden="true">🔍</span>
-                </div>
-                <button class="btn" @click=${props.onRefresh} ?disabled=${props.loading}>刷新</button>
-                ${props.onAdd ? html`<button class="btn primary" @click=${props.onAdd}>新增</button>` : nothing}
-              </div>
-            </div>
-
             ${props.error ? html`<div class="callout danger" style="margin-bottom: 16px;">${props.error}</div>` : nothing}
 
             ${(() => {
@@ -317,11 +316,14 @@ export function renderEmployeeMarket(props: EmployeeMarketProps) {
                 : html`
                     <div class="emp-sections">
                       ${sectionsFixed.map(
-                        (section) =>
+                        (section, index) =>
                           section.items.length > 0
                             ? html`
                                 <div class="emp-section">
-                                  <h3 class="emp-section__title">${section.title}</h3>
+                                  <div class="emp-section__header">
+                                    <h3 class="emp-section__title">${section.title}</h3>
+                                    ${index === 0 ? toolbarActions : nothing}
+                                  </div>
                                   <div class="emp-grid">
                                     ${section.items.map((it) => {
                                       const selected = props.selectedId === it.id;
