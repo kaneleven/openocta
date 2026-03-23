@@ -21,6 +21,8 @@ export const CRON_CHANNEL_LAST = "last";
 
 export type ChannelAccountSnapshot = {
   accountId: string;
+  /** 部分通道用于展示脱敏 ID（如 WeWork 智能机器人 BotId） */
+  appId?: string | null;
   name?: string | null;
   enabled?: boolean | null;
   configured?: boolean | null;
@@ -246,6 +248,17 @@ export type NostrStatus = {
   lastStopAt?: number | null;
   lastError?: string | null;
   profile?: NostrProfile | null;
+};
+
+export type WeWorkStatus = {
+  configured: boolean;
+  running: boolean;
+  connected?: boolean | null;
+  lastStartAt?: number | null;
+  lastStopAt?: number | null;
+  lastError?: string | null;
+  lastProbeAt?: number | null;
+  transport?: string | null;
 };
 
 export type MSTeamsProbe = {

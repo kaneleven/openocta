@@ -4,6 +4,7 @@ go 1.25
 
 require (
 	github.com/cexll/agentsdk-go v0.9.5
+	github.com/go-sphere/wecom-aibot-go-sdk v0.0.0-00010101000000-000000000000
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/larksuite/oapi-sdk-go/v3 v3.5.3
@@ -85,3 +86,6 @@ require (
 )
 
 replace github.com/cexll/agentsdk-go v0.9.5 => /Users/ZhanBei/GoProjects/agentsdk-go
+
+// 使用 zhanbei1 fork（含扫码创建机器人 HTTP 与 aibot 包，module 路径仍为 go-sphere）
+replace github.com/go-sphere/wecom-aibot-go-sdk => github.com/zhanbei1/wecom-aibot-go-sdk v0.0.1

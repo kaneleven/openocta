@@ -71,7 +71,9 @@ const (
 func NewHub(version string, h *handlers.Registry, ctx *handlers.Context) *Hub {
 	// Aligned with src/gateway/server-methods-list.ts BASE_METHODS
 	methods := []string{
-		"health", "logs.tail", "channels.status", "channels.logout", "status",
+		"health", "logs.tail", "channels.status", "channels.logout",
+		"channels.wework.qr.start", "channels.wework.qr.poll",
+		"status",
 		"usage.status", "usage.cost",
 		"tts.status", "tts.providers", "tts.enable", "tts.disable", "tts.convert", "tts.setProvider",
 		"config.get", "config.env", "config.set", "config.apply", "config.patch", "config.schema",

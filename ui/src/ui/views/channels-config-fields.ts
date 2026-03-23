@@ -9,6 +9,7 @@ export type ChannelFieldDef = {
   required: boolean;
   type: "string" | "number" | "boolean" | "string[]";
   placeholder?: string;
+  /** Shown under the control in the channel config panel */
   help?: string;
 };
 
@@ -38,14 +39,39 @@ const CHANNEL_FORM_DEFS: Record<string, ChannelFormDef> = {
   },
   wework: {
     fields: [
-      { path: ["credentials", "corpId"], label: "Corp ID", required: true, type: "string", placeholder: "your-corp-id" },
-      { path: ["credentials", "agentId"], label: "Agent ID", required: true, type: "string", placeholder: "your-agent-id" },
-      { path: ["credentials", "secret"], label: "Secret", required: true, type: "string", placeholder: "your-secret" },
-      { path: ["credentials", "token"], label: "Token", required: true, type: "string", placeholder: "your-token" },
-      { path: ["credentials", "encodingAESKey"], label: "Encoding AES Key", required: false, type: "string" },
-      { path: ["webhookPort"], label: "Webhook Port", required: false, type: "number", placeholder: "8766" },
+      {
+        path: ["credentials", "botId"],
+        label: "Bot ID",
+        required: true,
+        type: "string",
+        placeholder: "智能机器人 BotId",
+        help: "企业微信后台或扫码创建后获得，对应长连接 BotID。",
+      },
+      {
+        path: ["credentials", "botSecret"],
+        label: "Bot Secret",
+        required: true,
+        type: "string",
+        placeholder: "机器人 Secret",
+        help: "与 Bot ID 配对，请妥善保管。",
+      },
+      {
+        path: ["credentials", "wsUrl"],
+        label: "WebSocket URL",
+        required: false,
+        type: "string",
+        placeholder: "wss://openws.work.weixin.qq.com",
+        help: "一般留空使用官方默认地址。",
+      },
       { path: ["enabled"], label: "Enabled", required: false, type: "boolean" },
-      { path: ["allowedIds"], label: "Allowed IDs", required: false, type: "string[]", placeholder: "user-or-chat-id" },
+      {
+        path: ["allowedIds"],
+        label: "Allowed user IDs",
+        required: false,
+        type: "string[]",
+        placeholder: "userid-1, userid-2",
+        help: "空表示不限制；仅允许列表内用户发消息进入系统。",
+      },
     ],
   },
   telegram: {

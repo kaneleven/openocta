@@ -231,6 +231,13 @@ func ConfigSetHandler(opts HandlerOpts) error {
 	}
 	// Update context.Config.
 	opts.Context.Config = &cfg
+	// 与 config.patch 一致：写入内容包含 channels 时热重载各 IM 运行时（含企业微信 WebSocket）
+	var rawTop map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(raw), &rawTop); err == nil {
+		if _, hasChannels := rawTop["channels"]; hasChannels && ctx.ReloadChannelRuntimes != nil {
+			ctx.ReloadChannelRuntimes()
+		}
+	}
 	opts.Respond(true, map[string]interface{}{
 		"ok":     true,
 		"path":   snap.Path,

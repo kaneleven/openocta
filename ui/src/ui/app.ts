@@ -38,6 +38,8 @@ import {
   handleNostrProfileImport as handleNostrProfileImportInternal,
   handleNostrProfileSave as handleNostrProfileSaveInternal,
   handleNostrProfileToggleAdvanced as handleNostrProfileToggleAdvancedInternal,
+  handleWeWorkQrStart as handleWeWorkQrStartInternal,
+  handleWeWorkQrModalClose as handleWeWorkQrModalCloseInternal,
   handleWhatsAppLogout as handleWhatsAppLogoutInternal,
   handleWhatsAppStart as handleWhatsAppStartInternal,
   handleWhatsAppWait as handleWhatsAppWaitInternal,
@@ -191,6 +193,17 @@ export class OpenClawApp extends LitElement {
   @state() whatsappLoginQrDataUrl: string | null = null;
   @state() whatsappLoginConnected: boolean | null = null;
   @state() whatsappBusy = false;
+  @state() weworkQrModalOpen = false;
+  @state() weworkQrModalLoading = false;
+  @state() weworkQrModalPolling = false;
+  @state() weworkQrModalSuccess = false;
+  @state() weworkQrModalError: string | null = null;
+  @state() weworkQrModalReplaceWarn = false;
+  @state() weworkQrModalAuthUrl: string | null = null;
+  @state() weworkQrModalGenPageUrl: string | null = null;
+  /** Browser interval id for WeCom QR polling (not reactive) */
+  weworkQrPollTimer: number | null = null;
+  weworkQrSuccessCloseTimer: number | null = null;
   @state() nostrProfileFormState: NostrProfileFormState | null = null;
   @state() nostrProfileAccountId: string | null = null;
   @state() channelsSelectedChannelId: string | null = null;
@@ -622,6 +635,14 @@ export class OpenClawApp extends LitElement {
 
   async handleWhatsAppLogout() {
     await handleWhatsAppLogoutInternal(this);
+  }
+
+  async handleWeWorkQrStart() {
+    await handleWeWorkQrStartInternal(this);
+  }
+
+  handleWeWorkQrModalClose() {
+    handleWeWorkQrModalCloseInternal(this);
   }
 
   async handleChannelConfigSave() {

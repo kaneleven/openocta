@@ -162,6 +162,16 @@ func mergeRuntimeStatusIntoSnapshot(snap *channels.ChannelAccountSnapshot, statu
 		if v, ok := status.Extra["appId"].(string); ok && v != "" {
 			snap.AppID = v
 		}
+		if snap.AppID == "" {
+			if v, ok := status.Extra["botIdMasked"].(string); ok && v != "" {
+				snap.AppID = v
+			}
+		}
+		if snap.Probe == nil {
+			if tr, ok := status.Extra["transport"].(string); ok && tr != "" {
+				snap.Probe = map[string]interface{}{"transport": tr}
+			}
+		}
 		if v, ok := status.Extra["domain"].(string); ok && v != "" {
 			snap.Domain = v
 		}

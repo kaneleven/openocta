@@ -361,6 +361,21 @@ type Strings = {
   channelRelink: string;
   channelWaitForScan: string;
   channelLogout: string;
+  channelWeWork: string;
+  channelWeWorkSub: string;
+  channelWeWorkTransport: string;
+  channelWeWorkBotId: string;
+  channelWeWorkQrStart: string;
+  channelWeWorkQrWorking: string;
+  channelWeWorkQrStartFailed: string;
+  channelWeWorkOpenGenPage: string;
+  channelWeWorkQrModalTitle: string;
+  channelWeWorkQrReplaceWarn: string;
+  channelWeWorkQrPreparing: string;
+  channelWeWorkQrWaiting: string;
+  channelWeWorkQrSuccessClosing: string;
+  channelWeWorkQrSaveMissingForm: string;
+  channelWeWorkQrModalCancel: string;
   nostrEditProfile: string;
   nostrAccount: string;
   nostrUsername: string;
@@ -1305,6 +1320,24 @@ const EN: Strings = {
   channelRelink: "Relink",
   channelWaitForScan: "Wait for scan",
   channelLogout: "Logout",
+  channelWeWork: "WeCom Bot",
+  channelWeWorkSub:
+    "Enterprise WeChat intelligent bot via WebSocket (aibot). Scan to create a bot or paste Bot ID and Secret.",
+  channelWeWorkTransport: "Transport",
+  channelWeWorkBotId: "Bot ID (masked)",
+  channelWeWorkQrStart: "Scan to create bot",
+  channelWeWorkQrWorking: "Working…",
+  channelWeWorkQrStartFailed: "Could not start QR session (missing scode).",
+  channelWeWorkOpenGenPage: "Open scan page",
+  channelWeWorkQrModalTitle: "WeCom bot — scan to create",
+  channelWeWorkQrReplaceWarn:
+    "This gateway already has WeCom bot credentials. Creating again will replace Bot ID and Secret in the form (save to apply).",
+  channelWeWorkQrPreparing: "Preparing QR session…",
+  channelWeWorkQrWaiting: "Waiting for you to finish in WeCom…",
+  channelWeWorkQrSuccessClosing:
+    "Credentials saved. The gateway is reconnecting WebSocket. This dialog will close shortly.",
+  channelWeWorkQrSaveMissingForm: "Could not read channels.wework from the form after scan.",
+  channelWeWorkQrModalCancel: "Cancel",
   nostrEditProfile: "Edit Profile",
   nostrAccount: "Account",
   nostrUsername: "Username",
@@ -2242,6 +2275,24 @@ const ZH: Strings = {
   channelRelink: "重新链接",
   channelWaitForScan: "等待扫码",
   channelLogout: "登出",
+  channelWeWork: "企业微信智能机器人",
+  channelWeWorkSub:
+    "通过官方智能机器人 WebSocket 长连接（aibot）收发消息。支持扫码创建或手动填写 Bot ID / Secret。",
+  channelWeWorkTransport: "链路",
+  channelWeWorkBotId: "Bot ID（脱敏）",
+  channelWeWorkQrStart: "扫码快速创建",
+  channelWeWorkQrWorking: "处理中…",
+  channelWeWorkQrStartFailed: "无法开始扫码会话（缺少 scode）。",
+  channelWeWorkOpenGenPage: "打开扫码页",
+  channelWeWorkQrModalTitle: "企业微信智能机器人 — 扫码创建",
+  channelWeWorkQrReplaceWarn:
+    "当前已配置过企业微信智能机器人凭据。再次扫码创建将覆盖表单中的 Bot ID 与 Secret（保存后生效）。",
+  channelWeWorkQrPreparing: "正在获取扫码会话…",
+  channelWeWorkQrWaiting: "等待你在企业微信中完成创建…",
+  channelWeWorkQrSuccessClosing:
+    "凭据已保存，网关正在按新配置重建企业微信 WebSocket 连接。弹框即将自动关闭。",
+  channelWeWorkQrSaveMissingForm: "扫码成功后无法从表单读取 channels.wework，请重试或手动保存配置。",
+  channelWeWorkQrModalCancel: "取消",
   nostrEditProfile: "编辑资料",
   nostrAccount: "账号",
   nostrUsername: "用户名",

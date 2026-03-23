@@ -93,6 +93,8 @@ func NewRegistry(ctx *Context) Registry {
 		"logs.tail":                  LogsTailHandler,
 		"channels.status":            ChannelsStatusHandler,
 		"channels.logout":            ChannelsLogoutHandler,
+		"channels.wework.qr.start":   WeWorkQRStartHandler,
+		"channels.wework.qr.poll":    WeWorkQRPollHandler,
 		"status":                     StatusHandler,
 		"usage.status":               UsageStatusHandler,
 		"usage.cost":                 UsageCostHandler,

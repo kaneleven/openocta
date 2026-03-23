@@ -13,7 +13,7 @@ var Plugin = &channels.BasePlugin{
 		SelectionLabel: "WeWork 企业微信",
 		DocsPath:       "/channels/wework",
 		DocsLabel:      "wework",
-		Blurb:          "企业微信应用消息通道。",
+		Blurb:          "企业微信智能机器人：WebSocket 长连接（aibot），支持扫码创建与凭据配置。",
 		SystemImage:    "message-square",
 		Order:          85,
 	},

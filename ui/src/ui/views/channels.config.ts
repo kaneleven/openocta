@@ -106,6 +106,11 @@ export function renderChannelConfigForm(props: ChannelConfigFormProps) {
                     }}
                   />
                 `}
+            ${field.help
+              ? html`<div class="muted" style="font-size: 12px; margin-top: 4px; line-height: 1.35;">
+                  ${field.help}
+                </div>`
+              : nothing}
           </div>
         `;
       })}
