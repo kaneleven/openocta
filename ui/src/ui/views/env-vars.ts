@@ -58,7 +58,7 @@ function renderVarsTable(
     ${entries.length === 0
       ? html`
           <p class="env-vars__empty">${t("envVarsEmpty")}</p>
-          <button class="btn btn--secondary" ?disabled=${!connected} @click=${onAdd}>
+          <button class="btn btn--bg-content" ?disabled=${!connected} @click=${onAdd}>
             ${t("envVarsAdd")}
           </button>
         `
@@ -116,7 +116,7 @@ function renderVarsTable(
               )}
             </tbody>
           </table>
-          <button class="btn btn--secondary env-vars__add" ?disabled=${!connected} @click=${onAdd}>
+          <button class="btn btn--bg-content env-vars__add" ?disabled=${!connected} @click=${onAdd}>
             ${t("envVarsAdd")}
           </button>
         `}
@@ -135,7 +135,7 @@ export function renderEnvVars(props: EnvVarsProps) {
     <div class="env-vars">
       <div class="env-vars__toolbar">
         <button
-          class="btn btn--secondary"
+          class="btn btn--bg-content"
           ?disabled=${loading || !connected}
           @click=${onReload}
           title=${t("overviewRefresh")}

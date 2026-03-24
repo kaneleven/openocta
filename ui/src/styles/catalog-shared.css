@@ -21,7 +21,7 @@
 .emp-toolbar__title {
   font-size: 18px;
   font-weight: 700;
-  color: var(--text-strong);
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -42,7 +42,7 @@
   border-radius: 4px;
   border: 1px solid transparent;
   background: var(--bg);
-  color: var(--text);
+  color: var(--text-regular);
   font-size: 14px;
 }
 
@@ -51,7 +51,7 @@
 }
 
 .emp-search__input::placeholder {
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
 .emp-search__icon {
@@ -60,7 +60,7 @@
   top: 50%;
   transform: translateY(-50%);
   font-size: 14px;
-  color: var(--muted);
+  color: var(--text-secondary);
   pointer-events: none;
 }
 
@@ -78,7 +78,7 @@
 .emp-empty {
   padding: 60px;
   text-align: center;
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
 .emp-installed-section {
@@ -100,7 +100,7 @@
 .emp-section__title {
   font-size: 16px;
   font-weight: 700;
-  color: var(--text-strong);
+  color: var(--text-primary);
   margin: 0 0 20px;
 }
 
@@ -129,8 +129,8 @@
 }
 
 .emp-card-wrap.active {
-  border-color: var(--catalog-accent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--catalog-accent) 25%, transparent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .emp-card-btn {
@@ -171,7 +171,7 @@
 
 .emp-card__icon-fallback {
   font-size: 20px;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-weight: 700;
 }
 
@@ -188,7 +188,7 @@
   margin: 0 0 6px;
   font-size: 15px;
   font-weight: 700;
-  color: var(--text-strong);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -198,7 +198,7 @@
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--muted);
+  color: var(--text-secondary);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -208,7 +208,7 @@
 
 .content--catalog {
   padding: 20px;
-  background: var(--catalog-content-bg);
+  background: var(--bg-content);
 }
 
 .content--catalog > * + * {
@@ -244,7 +244,7 @@
 .content--catalog .emp-toolbar__title {
   font-size: 18px;
   font-weight: 800;
-  color: var(--catalog-card-title);
+  color: var(--text-primary);
 }
 
 .content--catalog .emp-toolbar__actions {
@@ -261,13 +261,13 @@
 .content--catalog .emp-search__input {
   height: 32px;
   padding: 0 10px 0 30px;
-  background: var(--catalog-search-bg);
-  color: var(--catalog-search-text);
+  background: var(--bg);
+  color: var(--text-primary);
   font-size: 13px;
 }
 
 .content--catalog .emp-search__input::placeholder {
-  color: var(--catalog-search-placeholder);
+  color: var(--text-secondary);
 }
 
 .content--catalog .emp-search__icon {
@@ -299,12 +299,12 @@
 .content--catalog .emp-card-wrap {
   border: 2px solid transparent;
   border-radius: 6px;
-  background: var(--catalog-card-bg);
+  background: var(--bg);
   box-shadow: none;
 }
 
 .content--catalog .emp-card-wrap:hover {
-  border-color: var(--catalog-card-hover-border);
+  border-color: var(--accent);
   box-shadow: none;
 }
 
@@ -316,7 +316,7 @@
 .content--catalog .emp-card__icon {
   margin-bottom: 16px;
   border-radius: 4px;
-  background: var(--catalog-card-icon-bg);
+  background: var(--bg-content);
 }
 
 .content--catalog .emp-card__actions {
@@ -331,11 +331,11 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 22px;
-  color: var(--catalog-card-title);
+  color: var(--text-primary);
 }
 
 .content--catalog .emp-card__desc {
-  color: var(--catalog-card-desc);
+  color: var(--text-regular);
   font-size: 13px;
   font-weight: normal;
   line-height: 20px;
@@ -362,9 +362,9 @@
   align-items: center;
   justify-content: center;
   border-radius: 7px;
-  border: 1px solid var(--catalog-button-border);
-  background: var(--catalog-button-bg);
-  color: var(--catalog-button-text);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-regular);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -375,9 +375,9 @@
 }
 
 .market-card-button:hover:not(:disabled) {
-  border-color: var(--catalog-button-hover-border);
-  color: var(--catalog-button-hover-text);
-  background: var(--catalog-button-hover-bg);
+  border-color: var(--border);
+  color: var(--text-primary);
+  background: var(--bg);
 }
 
 .market-card-button:disabled {
@@ -387,28 +387,22 @@
 
 .market-card-button--primary {
   border-color: transparent;
-  background: var(--catalog-accent);
+  background: var(--accent);
   color: #ffffff;
 }
 
 .market-card-button--primary:hover:not(:disabled) {
-  background: var(--catalog-accent-strong);
+  background: var(--accent);
   color: #ffffff;
 }
 
 .market-card-button--ghost {
-  background: var(--catalog-button-ghost-bg);
+  background: var(--bg-content);
 }
 
 .market-card-button--installed {
-  background: var(--catalog-button-installed-bg);
-  color: var(--catalog-button-installed-text);
-}
-
-.market-card-button--danger:hover:not(:disabled) {
-  border-color: var(--catalog-button-danger-hover-border);
-  color: var(--catalog-button-danger-hover-text);
-  background: var(--catalog-button-danger-hover-bg);
+  background: var(--bg-content);
+  color: var(--text-secondary);
 }
 
 .market-card-meta {
@@ -423,44 +417,44 @@
   display: inline-flex;
   align-items: center;
   border-radius: 4px;
-  background: var(--catalog-chip-bg);
-  color: var(--catalog-chip-text);
+  background: var(--bg-content);
+  color: var(--text-regular);
   font-size: 13px;
 }
 
 .market-card-chip--state {
-  background: var(--catalog-chip-state-bg);
-  border: 1px solid var(--catalog-chip-state-border);
-  color: var(--catalog-chip-state-text);
+  background: var(--bg);
+  border: 1px solid var(--accent-muted);
+  color: var(--accent-muted);
 }
 
 .market-card-chip--muted {
-  color: var(--catalog-chip-muted-text);
+  color: var(--text-secondary);
 }
 
 .content--catalog .emp-toolbar__actions .btn {
-  border: 1px solid var(--catalog-button-border);
-  background: var(--catalog-button-bg);
-  color: var(--catalog-button-text);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-regular);
 }
 
 .content--catalog .emp-toolbar__actions .btn:hover {
-  border-color: var(--catalog-button-hover-border);
-  background: var(--catalog-button-hover-bg);
-  color: var(--catalog-button-hover-text);
+  border-color: var(--border);
+  background: var(--bg);
+  color: var(--text-primary);
 }
 
 .content--catalog .emp-toolbar__actions .btn.primary {
-  border-color: var(--catalog-accent);
-  background: var(--catalog-accent);
+  border-color: var(--accent);
+  background: var(--accent);
   color: #ffffff;
 }
 
 .content--catalog .emp-toolbar__actions .btn.primary:hover {
-  border-color: var(--catalog-accent-strong);
-  background: var(--catalog-accent-strong);
+  border-color: var(--accent);
+  background: var(--accent);
   color: #ffffff;
   box-shadow:
     var(--shadow-md),
-    0 0 20px color-mix(in srgb, var(--catalog-accent) 30%, transparent);
+    0 0 20px color-mix(in srgb, var(--accent) 30%, transparent);
 }

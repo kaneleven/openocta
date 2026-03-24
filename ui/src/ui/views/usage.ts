@@ -30,7 +30,7 @@ const usageStylesString = `
     border: 1px solid var(--border);
     border-radius: 6px;
     background: var(--bg);
-    color: var(--text);
+    color: var(--text-regular);
     font-size: 13px;
   }
   .usage-filters-inline input[type="date"] {
@@ -38,7 +38,7 @@ const usageStylesString = `
     border: 1px solid var(--border);
     border-radius: 6px;
     background: var(--bg);
-    color: var(--text);
+    color: var(--text-regular);
     font-size: 13px;
   }
   .usage-filters-inline input[type="text"] {
@@ -46,7 +46,7 @@ const usageStylesString = `
     border: 1px solid var(--border);
     border-radius: 6px;
     background: var(--bg);
-    color: var(--text);
+    color: var(--text-regular);
     font-size: 13px;
     min-width: 180px;
   }
@@ -140,13 +140,13 @@ const usageStylesString = `
     line-height: 1;
     border: 1px solid var(--border);
     background: var(--bg-secondary);
-    color: var(--text);
+    color: var(--text-regular);
     box-shadow: none;
     transition: background 0.15s, border-color 0.15s, color 0.15s;
   }
   .usage-query-actions .btn:hover {
     background: var(--bg);
-    border-color: var(--border-strong);
+    border-color: var(--border-primary);
   }
   .usage-action-btn {
     height: 34px;
@@ -157,13 +157,13 @@ const usageStylesString = `
     line-height: 1;
     border: 1px solid var(--border);
     background: var(--bg-secondary);
-    color: var(--text);
+    color: var(--text-regular);
     box-shadow: none;
     transition: background 0.15s, border-color 0.15s, color 0.15s;
   }
   .usage-action-btn:hover {
     background: var(--bg);
-    border-color: var(--border-strong);
+    border-color: var(--border-primary);
   }
   .usage-primary-btn {
     background: #ff4d4d;
@@ -200,7 +200,7 @@ const usageStylesString = `
   }
   .usage-secondary-btn {
     background: var(--bg-secondary);
-    color: var(--text);
+    color: var(--text-regular);
     border-color: var(--border);
   }
   .usage-query-input {
@@ -210,7 +210,7 @@ const usageStylesString = `
     border: 1px solid var(--border);
     border-radius: 6px;
     background: var(--bg);
-    color: var(--text);
+    color: var(--text-regular);
     font-size: 13px;
   }
   .usage-query-suggestions {
@@ -225,12 +225,12 @@ const usageStylesString = `
     border: 1px solid var(--border);
     background: var(--bg-secondary);
     font-size: 11px;
-    color: var(--text);
+    color: var(--text-regular);
     cursor: pointer;
     transition: background 0.15s;
   }
   .usage-query-suggestion:hover {
-    background: var(--bg-hover);
+    background: var(--bg);
   }
   .usage-filter-row {
     display: flex;
@@ -348,7 +348,7 @@ const usageStylesString = `
     border: 1px solid var(--border);
     background: var(--bg-secondary);
     font-size: 11px;
-    color: var(--text);
+    color: var(--text-regular);
     cursor: pointer;
   }
   .usage-pin-btn.active {
@@ -387,7 +387,7 @@ const usageStylesString = `
   }
   .usage-metric-badge strong {
     font-size: 12px;
-    color: var(--text);
+    color: var(--text-regular);
   }
   .usage-controls {
     display: flex;
@@ -422,13 +422,13 @@ const usageStylesString = `
     border: 1px solid var(--border);
     border-radius: 6px;
     background: var(--bg);
-    color: var(--text);
+    color: var(--text-regular);
     font-size: 12px;
   }
   .usage-export-menu summary {
     cursor: pointer;
     font-weight: 500;
-    color: var(--text);
+    color: var(--text-regular);
     list-style: none;
     display: inline-flex;
     align-items: center;
@@ -537,7 +537,7 @@ const usageStylesString = `
   .usage-daypart-cell {
     border-radius: 8px;
     padding: 10px;
-    color: var(--text);
+    color: var(--text-regular);
     background: rgba(255, 77, 77, 0.08);
     border: 1px solid rgba(255, 77, 77, 0.2);
     display: flex;
@@ -640,7 +640,7 @@ const usageStylesString = `
   .usage-summary-value {
     font-size: 16px;
     font-weight: 600;
-    color: var(--text-strong);
+    color: var(--text-primary);
   }
   .usage-summary-value.good {
     color: #1f8f4e;
@@ -679,7 +679,7 @@ const usageStylesString = `
     justify-content: space-between;
     gap: 12px;
     font-size: 12px;
-    color: var(--text);
+    color: var(--text-regular);
     align-items: flex-start;
   }
   .usage-list-value {
@@ -701,7 +701,7 @@ const usageStylesString = `
     cursor: pointer;
   }
   .usage-list-item.button:hover {
-    color: var(--text-strong);
+    color: var(--text-primary);
   }
   .usage-list-item .muted {
     font-size: 11px;
@@ -744,7 +744,7 @@ const usageStylesString = `
     border-radius: 999px;
     font-size: 11px;
     background: var(--bg);
-    color: var(--text);
+    color: var(--text-regular);
   }
   .usage-meta-grid {
     display: grid;
@@ -801,7 +801,7 @@ const usageStylesString = `
     transition: all 0.15s;
   }
   .chart-toggle .toggle-btn:hover {
-    color: var(--text);
+    color: var(--text-regular);
   }
   .chart-toggle .toggle-btn.active {
     background: #ff4d4d;
@@ -850,7 +850,7 @@ const usageStylesString = `
     min-width: 0;
   }
   .daily-bar-wrapper:hover {
-    background: var(--bg-hover);
+    background: var(--bg);
   }
   .daily-bar-wrapper.selected {
     background: var(--accent-subtle);
@@ -922,7 +922,7 @@ const usageStylesString = `
     font-size: 15px;
     letter-spacing: -0.02em;
     margin-bottom: 12px;
-    color: var(--text-strong);
+    color: var(--text-primary);
   }
   .cost-breakdown-bar {
     height: 28px;
@@ -964,7 +964,7 @@ const usageStylesString = `
     align-items: center;
     gap: 6px;
     font-size: 12px;
-    color: var(--text);
+    color: var(--text-regular);
     cursor: help;
   }
   .legend-dot {
@@ -1026,7 +1026,7 @@ const usageStylesString = `
     border-bottom: none;
   }
   .session-bar-row:hover {
-    background: var(--bg-hover);
+    background: var(--bg);
   }
   .session-bar-row.selected {
     background: var(--accent-subtle);
@@ -1035,7 +1035,7 @@ const usageStylesString = `
     flex: 1 1 auto;
     min-width: 0;
     font-size: 13px;
-    color: var(--text);
+    color: var(--text-regular);
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -1095,8 +1095,8 @@ const usageStylesString = `
   }
   .session-copy-btn:hover {
     background: var(--bg);
-    border-color: var(--border-strong);
-    color: var(--text);
+    border-color: var(--border-primary);
+    color: var(--text-regular);
   }
 
   /* ===== TIME SERIES CHART ===== */
@@ -1119,7 +1119,7 @@ const usageStylesString = `
   }
   .timeseries-header {
     font-weight: 600;
-    color: var(--text);
+    color: var(--text-regular);
   }
   .timeseries-chart {
     width: 100%;
@@ -1216,7 +1216,7 @@ const usageStylesString = `
     border-left: 3px solid var(--accent);
   }
   .session-log-entry.assistant {
-    border-left: 3px solid var(--border-strong);
+    border-left: 3px solid var(--border-primary);
   }
   .session-log-meta {
     display: flex;
@@ -1245,7 +1245,7 @@ const usageStylesString = `
   .session-log-content {
     font-size: 13px;
     line-height: 1.5;
-    color: var(--text);
+    color: var(--text-regular);
     white-space: pre-wrap;
     word-break: break-word;
     background: var(--bg-secondary);
@@ -1267,7 +1267,7 @@ const usageStylesString = `
     font-weight: 600;
     font-size: 13px;
     margin-bottom: 4px;
-    color: var(--text);
+    color: var(--text-regular);
   }
   .context-weight-desc {
     font-size: 12px;
@@ -1352,7 +1352,7 @@ const usageStylesString = `
   }
   .context-list-item .mono {
     font-family: var(--font-mono);
-    color: var(--text);
+    color: var(--text-regular);
   }
   .context-list-item .muted {
     color: var(--text-muted);
@@ -1480,7 +1480,7 @@ const usageStylesString = `
     border-radius: 6px;
     border: 1px solid var(--border);
     background: var(--bg);
-    color: var(--text);
+    color: var(--text-regular);
     font-size: 12px;
   }
   .sessions-action-btn {
@@ -1520,7 +1520,7 @@ const usageStylesString = `
   }
   .sessions-card .session-bar-row:hover {
     border-color: var(--border);
-    background: var(--bg-hover);
+    background: var(--bg);
   }
   .sessions-card .session-bar-row.selected {
     border-color: var(--accent);
@@ -1561,7 +1561,7 @@ const usageStylesString = `
   .session-detail-empty-title {
     font-size: 15px;
     font-weight: 600;
-    color: var(--text);
+    color: var(--text-regular);
     margin-bottom: 8px;
   }
   .session-detail-empty-desc {
@@ -1602,7 +1602,7 @@ const usageStylesString = `
     cursor: pointer;
   }
   .session-detail-header:hover {
-    background: var(--bg-hover);
+    background: var(--bg);
   }
   .session-detail-title {
     font-weight: 600;
@@ -1619,7 +1619,7 @@ const usageStylesString = `
   .session-close-btn {
     background: var(--bg);
     border: 1px solid var(--border);
-    color: var(--text);
+    color: var(--text-regular);
     cursor: pointer;
     padding: 2px 8px;
     font-size: 16px;
@@ -1628,8 +1628,8 @@ const usageStylesString = `
     transition: background 0.15s, color 0.15s;
   }
   .session-close-btn:hover {
-    background: var(--bg-hover);
-    color: var(--text);
+    background: var(--bg);
+    color: var(--text-regular);
     border-color: var(--accent);
   }
   .session-detail-stats {
@@ -1639,7 +1639,7 @@ const usageStylesString = `
     color: var(--text-muted);
   }
   .session-detail-stats strong {
-    color: var(--text);
+    color: var(--text-regular);
     font-family: var(--font-mono);
   }
   .session-detail-content {
@@ -1753,8 +1753,8 @@ const usageStylesString = `
     transition: all 0.15s;
   }
   .context-expand-btn:hover {
-    color: var(--text);
-    border-color: var(--border-strong);
+    color: var(--text-regular);
+    border-color: var(--border-primary);
     background: var(--bg);
   }
   
@@ -1846,7 +1846,7 @@ const usageStylesString = `
     background: var(--bg-secondary);
     padding: 6px 8px;
     font-size: 11px;
-    color: var(--text);
+    color: var(--text-regular);
   }
   .session-log-tools summary {
     cursor: pointer;
@@ -1871,7 +1871,7 @@ const usageStylesString = `
     padding: 2px 8px;
     font-size: 10px;
     background: var(--bg);
-    color: var(--text);
+    color: var(--text-regular);
   }
 
   /* ===== RESPONSIVE ===== */
@@ -4746,9 +4746,9 @@ export function renderUsage(props: UsageProps) {
           </div>
           <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
             <div style="display: flex; gap: 8px; align-items: center;">
-              <input type="date" .value=${props.startDate} disabled style="padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 13px; opacity: 0.6;" />
+              <input type="date" .value=${props.startDate} disabled style="padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text-regular); font-size: 13px; opacity: 0.6;" />
               <span style="color: var(--text-muted);">to</span>
-              <input type="date" .value=${props.endDate} disabled style="padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 13px; opacity: 0.6;" />
+              <input type="date" .value=${props.endDate} disabled style="padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text-regular); font-size: 13px; opacity: 0.6;" />
             </div>
           </div>
         </div>

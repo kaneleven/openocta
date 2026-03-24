@@ -111,7 +111,7 @@ export function renderSecurity(props: SecurityProps) {
       </div>
 
       <!-- Overview card -->
-      <div class="security-overview-card" style="margin-top: 20px; padding: 20px; background: var(--bg-muted, #f8fafc); border-radius: 12px; border: 1px solid var(--border, #e2e8f0);">
+      <div class="security-overview-card" style="margin-top: 20px; padding: 20px; background: var(--bg-content, #f8fafc); border-radius: 12px; border: 1px solid var(--border, #e2e8f0);">
         <div class="card-sub" style="margin-bottom: 12px; font-size: 14px;">${t("securityOverviewTitle")}</div>
         <div class="row" style="flex-wrap: wrap; gap: 24px;">
           <div>
@@ -120,15 +120,15 @@ export function renderSecurity(props: SecurityProps) {
           </div>
           <div>
             <div class="muted" style="font-size: 12px;">${t("securityOverviewSandbox")}</div>
-            <div style="font-size: 16px; font-weight: 600; color: ${sandboxEnabled ? "var(--ok, #16a34a)" : "var(--muted)"};">${sandboxEnabled ? t("sandboxEnabled") : t("sandboxDisabled")}</div>
+            <div style="font-size: 16px; font-weight: 600; color: ${sandboxEnabled ? "var(--ok, #16a34a)" : "var(--text-secondary)"};">${sandboxEnabled ? t("sandboxEnabled") : t("sandboxDisabled")}</div>
           </div>
           <div>
             <div class="muted" style="font-size: 12px;">${t("securityOverviewCommandPolicy")}</div>
-            <div style="font-size: 16px; font-weight: 600; color: ${commandPolicyEnabled ? "var(--ok, #16a34a)" : "var(--muted)"};">${commandPolicyEnabled ? t("sandboxEnabled") : t("sandboxDisabled")}</div>
+            <div style="font-size: 16px; font-weight: 600; color: ${commandPolicyEnabled ? "var(--ok, #16a34a)" : "var(--text-secondary)"};">${commandPolicyEnabled ? t("sandboxEnabled") : t("sandboxDisabled")}</div>
           </div>
           <div>
             <div class="muted" style="font-size: 12px;">${t("securityOverviewPendingApprovals")}</div>
-            <div style="font-size: 16px; font-weight: 600; color: ${props.pendingApprovalsCount > 0 ? "var(--danger, #dc2626)" : "var(--muted)"};">${props.pendingApprovalsCount}</div>
+            <div style="font-size: 16px; font-weight: 600; color: ${props.pendingApprovalsCount > 0 ? "var(--danger, #dc2626)" : "var(--text-secondary)"};">${props.pendingApprovalsCount}</div>
           </div>
         </div>
       </div>

@@ -8,7 +8,7 @@
   border-radius: 10px;
   border: 1px dashed rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.04);
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.4;
 }
@@ -75,10 +75,10 @@
 }
 
 .chat-text :where(blockquote) {
-  border-left: 3px solid var(--border-strong);
+  border-left: 3px solid var(--border-primary);
   padding-left: 12px;
   margin-left: 0;
-  color: var(--muted);
+  color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.02);
   padding: 8px 12px;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
@@ -86,12 +86,12 @@
 
 .chat-text :where(blockquote blockquote) {
   margin-top: 8px;
-  border-left-color: var(--border-hover);
+  border-left-color: var(--border);
   background: rgba(255, 255, 255, 0.03);
 }
 
 .chat-text :where(blockquote blockquote blockquote) {
-  border-left-color: var(--muted-strong);
+  border-left-color: var(--border);
   background: rgba(255, 255, 255, 0.04);
 }
 

@@ -122,7 +122,7 @@
   padding: 0 12px;
   border: none;
   background: transparent;
-  color: var(--text);
+  color: var(--text-regular);
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.2s;
@@ -130,7 +130,7 @@
 
 .top-tab:hover {
   font-weight: 500;
-  color: var(--text-strong);
+  color: var(--text-primary);
 }
 
 .top-tab:hover {
@@ -139,7 +139,7 @@
 
 .top-tab--active {
   font-weight: 500;
-  color: var(--text-strong);
+  color: var(--text-primary);
   position: relative;
 }
 
@@ -148,7 +148,7 @@
   width: 28px;
   height: 2px;
   margin-left: -14px;
-  background: var(--text-strong);
+  background: var(--text-primary);
   position: absolute;
   bottom: 0;
   left: 50%;
@@ -211,7 +211,7 @@
   border-radius: 10px;
   border: 1px solid transparent;
   background: transparent;
-  color: var(--text);
+  color: var(--text-regular);
   text-align: left;
   cursor: pointer;
 }
@@ -275,8 +275,8 @@
   font-size: 14px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--input);
-  color: var(--text);
+  background: var(--border);
+  color: var(--text-regular);
 }
 
 .topbar .nav-collapse-toggle {
@@ -325,13 +325,13 @@
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.1;
-  color: var(--text-strong);
+  color: var(--text-primary);
 }
 
 .brand-sub {
   font-size: 10px;
   font-weight: 500;
-  color: var(--muted);
+  color: var(--text-secondary);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   line-height: 1;
@@ -364,17 +364,6 @@
 .topbar-status .statusDot {
   width: 6px;
   height: 6px;
-}
-
-.topbar-status .theme-toggle {
-  --theme-item: 24px;
-  --theme-gap: 2px;
-  --theme-pad: 3px;
-}
-
-.topbar-status .theme-icon {
-  width: 12px;
-  height: 12px;
 }
 
 .topbar-status .pill .topbar-link {
@@ -512,7 +501,7 @@
 }
 
 .nav-collapse-toggle:hover {
-  background: var(--bg-hover);
+  background: var(--bg);
   border-color: var(--border);
 }
 
@@ -522,7 +511,7 @@
   justify-content: center;
   width: 18px;
   height: 18px;
-  color: var(--muted);
+  color: var(--text-secondary);
   transition: color var(--duration-fast) ease;
 }
 
@@ -537,7 +526,7 @@
 }
 
 .nav-collapse-toggle:hover .nav-collapse-toggle__icon {
-  color: var(--text);
+  color: var(--text-regular);
 }
 
 /* Nav groups */
@@ -570,7 +559,7 @@
   padding: 6px 10px;
   font-size: 11px;
   font-weight: 500;
-  color: var(--muted);
+  color: var(--text-secondary);
   margin-bottom: 4px;
   background: transparent;
   border: none;
@@ -583,8 +572,8 @@
 }
 
 .nav-label:hover {
-  color: var(--text);
-  background: var(--bg-hover);
+  color: var(--text-regular);
+  background: var(--bg);
 }
 
 .nav-label--static {
@@ -592,7 +581,7 @@
 }
 
 .nav-label--static:hover {
-  color: var(--muted);
+  color: var(--text-secondary);
   background: transparent;
 }
 
@@ -621,7 +610,7 @@
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   background: transparent;
-  color: var(--muted);
+  color: var(--text-secondary);
   cursor: pointer;
   text-decoration: none;
   transition:
@@ -667,8 +656,8 @@ button.nav-item {
 }
 
 .nav-item:hover {
-  color: var(--text);
-  background: var(--bg-hover);
+  color: var(--text-regular);
+  background: var(--bg);
   text-decoration: none;
 }
 
@@ -677,7 +666,7 @@ button.nav-item {
 }
 
 .nav-item.active {
-  color: var(--text-strong);
+  color: var(--text-primary);
   background: var(--accent-subtle);
 }
 
@@ -754,11 +743,11 @@ button.nav-item {
   font-weight: 700;
   letter-spacing: -0.035em;
   line-height: 1.15;
-  color: var(--text-strong);
+  color: var(--text-primary);
 }
 
 .page-sub {
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 14px;
   font-weight: 400;
   margin-top: 6px;
@@ -848,7 +837,7 @@ button.nav-item {
 }
 
 .list-item:hover {
-  border-color: var(--border-strong);
+  border-color: var(--border-primary);
 }
 
 .list-item.active {
@@ -857,14 +846,14 @@ button.nav-item {
 
 .list-item__title {
   font-weight: 700;
-  color: var(--text-strong);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .list-item__sub {
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.4;
   overflow: hidden;
@@ -917,7 +906,7 @@ button.nav-item {
 .market-sidebar__title {
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: var(--text-strong);
+  color: var(--text-primary);
 }
 
 .market-sidebar__search {
@@ -939,19 +928,19 @@ button.nav-item {
   border-radius: 12px;
   border: 1px solid transparent;
   background: transparent;
-  color: var(--muted);
+  color: var(--text-secondary);
   cursor: pointer;
   text-align: left;
 }
 
 .market-cat:hover {
-  background: var(--bg-hover);
-  color: var(--text);
+  background: var(--bg);
+  color: var(--text-regular);
 }
 
 .market-cat.active {
   background: var(--accent-subtle);
-  color: var(--text-strong);
+  color: var(--text-primary);
   border-color: color-mix(in srgb, var(--accent) 25%, var(--border));
 }
 
@@ -965,7 +954,7 @@ button.nav-item {
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
-  color: var(--muted);
+  color: var(--text-secondary);
   border: 1px solid var(--border);
   background: var(--bg);
 }
@@ -1023,7 +1012,7 @@ button.nav-item {
 .chip.active {
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, var(--secondary));
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-content));
 }
 
 .market-sections {
@@ -1036,7 +1025,7 @@ button.nav-item {
   font-size: 16px;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: var(--text-strong);
+  color: var(--text-primary);
   margin: 6px 2px 10px;
 }
 
@@ -1060,7 +1049,7 @@ button.nav-item {
 
 .market-card:hover {
   transform: translateY(-1px);
-  border-color: var(--border-strong);
+  border-color: var(--border-primary);
   box-shadow: var(--shadow-md);
 }
 
@@ -1089,7 +1078,7 @@ button.nav-item {
 
 .market-card__title {
   font-weight: 800;
-  color: var(--text-strong);
+  color: var(--text-primary);
   line-height: 1.2;
   letter-spacing: -0.02em;
   overflow: hidden;
@@ -1099,7 +1088,7 @@ button.nav-item {
 
 .market-card__sub {
   margin-top: 6px;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.35;
   display: -webkit-box;
@@ -1131,7 +1120,7 @@ button.nav-item {
 
 .badge.ghost {
   background: var(--bg2);
-  color: var(--muted);
+  color: var(--text-secondary);
   border-color: var(--border);
   font-weight: 600;
 }
@@ -1160,7 +1149,7 @@ button.nav-item {
   padding-left: 8px;
   margin-bottom: 10px;
   font-size: 14px;
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
 .emp-categories {
@@ -1177,35 +1166,35 @@ button.nav-item {
   border-radius: 8px;
   background: transparent;
   border: none;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 18px;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
-  color: var(--catalog-nav-item-text);
+  color: var(--text-regular);
 }
 
 .emp-cat:hover:not(:disabled) {
-  color: var(--catalog-nav-item-hover-text);
+  color: var(--accent);
 }
 
 .emp-cat.active {
-  background: var(--catalog-nav-item-active-bg);
-  color: var(--catalog-nav-item-active-text);
+  background: var(--bg-content);
+  color: var(--accent);
   font-weight: 500;
 }
 
 .emp-cat__count {
   padding: 0 8px;
   border-radius: 999px;
-  background: var(--catalog-nav-count-bg);
-  color: var(--catalog-nav-count-text);
+  background: var(--bg-content);
+  color: var(--text-secondary);
   font-size: 12px;
   transition: all 0.2s ease;
 }
 
 .emp-cat.active .emp-cat__count {
-  background: var(--catalog-accent);
+  background: var(--accent);
   color: #ffffff;
 }
 
@@ -1268,7 +1257,7 @@ button.nav-item {
   cursor: pointer;
   list-style: none;
   font-size: 15px;
-  color: var(--tutorials-category-text);
+  color: var(--text-regular);
 }
 
 .tutorials-course__summary::-webkit-details-marker {
@@ -1307,13 +1296,13 @@ button.nav-item {
 
 .tutorials-course__meta {
   font-size: 13px;
-  color: var(--muted);
+  color: var(--text-secondary);
   margin-left: 4px;
 }
 
 .tutorials-course__duration {
   font-size: 14px;
-  color: var(--muted);
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
@@ -1331,7 +1320,7 @@ button.nav-item {
   padding: 6px 0;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
   font-size: 18px;
-  color: var(--tutorials-category-text);
+  color: var(--text-regular);
 }
 
 .tutorials-lesson:last-child {
@@ -1343,10 +1332,10 @@ button.nav-item {
 }
 
 .tutorials-lesson--clickable:hover {
-  color: var(--catalog-accent-strong);
+  color: var(--accent);
 }
 .tutorials-lesson--clickable:hover .tutorials-lesson__duration {
-  color: var(--catalog-accent-strong);
+  color: var(--accent);
 }
 
 .tutorials-lesson--disabled {
@@ -1372,7 +1361,7 @@ button.nav-item {
 .tutorials-lesson__duration {
   justify-self: end;
   font-variant-numeric: tabular-nums;
-  color: var(--tutorials-lesson-duration);
+  color: var(--text-secondary);
   transition: color 0.2s ease;
 }
 
@@ -1408,25 +1397,6 @@ button.nav-item {
   border: none;
 }
 
-.tutorials-bilibili-link {
-  position: absolute;
-  bottom: 16px;
-  left: 16px;
-  z-index: 5;
-  padding: 8px 14px;
-  background: var(--tutorials-link-overlay-bg);
-  color: #00a1d6;
-  border-radius: 8px;
-  text-decoration: none;
-  font-size: 14px;
-  transition: background 0.2s;
-}
-
-.tutorials-bilibili-link:hover {
-  background: color-mix(in srgb, var(--tutorials-link-overlay-bg) 88%, #000000);
-  color: #00b5e2;
-}
-
 .emp-card__get {
   position: absolute;
   top: 12px;
@@ -1442,7 +1412,7 @@ button.nav-item {
 .emp-card__got-disabled {
   padding: 4px 12px;
   font-size: 13px;
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
 /* 市场卡片操作图标区 */
@@ -1456,14 +1426,14 @@ button.nav-item {
   border: none;
   border-radius: 8px;
   background: var(--bg2);
-  color: var(--muted);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: color 0.15s, background 0.15s;
 }
 
 .market-card-icon-btn:hover {
   background: var(--bg3);
-  color: var(--text);
+  color: var(--text-regular);
 }
 
 .market-card-icon-btn:disabled {
@@ -1519,7 +1489,7 @@ button.nav-item {
 
 .emp-card__tags-more {
   font-size: 12px;
-  color: var(--muted);
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
@@ -1543,7 +1513,7 @@ button.nav-item {
   align-items: center;
   justify-content: center;
   font-size: 18px;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-weight: 700;
 }
 
@@ -1555,7 +1525,7 @@ button.nav-item {
 .emp-card-title {
   font-size: 16px;
   font-weight: 700;
-  color: var(--text-strong);
+  color: var(--text-primary);
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1565,14 +1535,14 @@ button.nav-item {
 .emp-card-sub {
   font-size: 12px;
   margin-top: 2px;
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
 .emp-card-desc {
   margin-top: 6px;
   font-size: 13px;
   line-height: 20px;
-  color: var(--muted);
+  color: var(--text-secondary);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -1600,7 +1570,7 @@ button.nav-item {
 }
 
 .emp-row-btn:hover {
-  background: var(--bg-hover);
+  background: var(--bg);
 }
 
 .emp-row-btn.active {
@@ -1634,14 +1604,14 @@ button.nav-item {
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--bg2);
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 12px;
   white-space: nowrap;
 }
 
 .emp-tag-more {
   padding: 2px 4px;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
@@ -1650,7 +1620,7 @@ button.nav-item {
   border-radius: 999px;
   background: var(--bg2);
   font-size: 12px;
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
 .emp-status[data-status="open"] {
@@ -1683,7 +1653,7 @@ button.nav-item {
   font-size: 26px;
   line-height: 32px;
   font-weight: 700;
-  color: var(--detail-title-color);
+  color: var(--text-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
@@ -1693,7 +1663,7 @@ button.nav-item {
   padding: 4px 10px;
   border-radius: 99px;
   background: var(--bg2);
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -1701,7 +1671,7 @@ button.nav-item {
   margin-top: 16px;
   font-size: 16px;
   line-height: 1.6;
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
 .emp-detail-info {
@@ -1714,7 +1684,7 @@ button.nav-item {
 
 .emp-detail-meta {
   font-size: 13px;
-  color: var(--muted);
+  color: var(--text-secondary);
   margin-right: 20px;
 }
 
@@ -1729,7 +1699,7 @@ button.nav-item {
 .emp-detail-readme-title {
   font-size: 18px;
   font-weight: 700;
-  color: var(--text-strong);
+  color: var(--text-primary);
   margin: 0 0 12px;
 }
 
@@ -1810,7 +1780,6 @@ button.nav-item {
   border: 0;
   background: transparent;
   border-radius: 8px;
-  color: var(--catalog-topbar-link);
   cursor: pointer;
   transition: background-color 160ms ease, color 160ms ease;
   appearance: none;
@@ -1834,11 +1803,6 @@ button.nav-item {
   transform: rotate(-45deg);
 }
 
-.emp-detail-modal__header .emp-detail-modal__close:hover {
-  background: var(--catalog-nav-item-hover);
-  color: var(--catalog-topbar-link-active);
-}
-
 .emp-detail-modal__header .emp-detail-modal__close:focus-visible {
   outline: 2px solid var(--brand2);
   outline-offset: 2px;
@@ -1850,7 +1814,7 @@ button.nav-item {
 
 .shell--catalog {
   --shell-nav-width: 200px;
-  background: var(--catalog-shell-bg);
+  background: var(--bg-content);
 }
 
 .shell--tutorials {
@@ -1863,8 +1827,8 @@ button.nav-item {
 .topbar {
   gap: 20px;
   padding: 0 18px;
-  background: var(--catalog-topbar-bg);
-  border-bottom: 1px solid var(--catalog-topbar-border);
+  background: var(--bg-content);
+  border-bottom: 1px solid var(--border);
   box-shadow: none;
 }
 
@@ -1882,22 +1846,22 @@ button.nav-item {
   padding: 0 14px;
   font-size: 14px;
   font-weight: 500;
-  color: var(--catalog-topbar-text);
+  color: var(--text-regular);
 }
 
 .top-tab:hover {
   background: transparent;
-  color: var(--catalog-topbar-text-active);
+  color: var(--text-primary);
 }
 
 .top-tab--active {
-  color: var(--catalog-topbar-text-active);
+  color: var(--text-primary);
 }
 
 .top-tab--active::after {
   width: 32px;
   margin-left: -16px;
-  background: var(--catalog-topbar-active-underline);
+  background: var(--text-primary);
 }
 
 .brand-logo {
@@ -1911,7 +1875,7 @@ button.nav-item {
 
 .brand-sub {
   font-size: 10px;
-  color: var(--catalog-topbar-brand-sub);
+  color: var(--text-secondary);
   letter-spacing: 0;
   text-transform: none;
 }
@@ -1925,8 +1889,8 @@ button.nav-item {
   height: 34px;
   padding: 0 14px;
   border-radius: 999px;
-  background: var(--catalog-topbar-pill-bg);
-  color: var(--catalog-topbar-pill-text);
+  background: var(--bg-content);
+  color: var(--text-regular);
   font-size: 13px;
 }
 
@@ -1935,7 +1899,7 @@ button.nav-item {
 }
 
 .topbar-status .pill .mono {
-  color: var(--catalog-topbar-pill-muted);
+  color: var(--text-secondary);
 }
 
 .topbar-status .pill .topbar-link {
@@ -1944,7 +1908,7 @@ button.nav-item {
 
 .topbar-status .pill .topbar-link:hover {
   background: transparent;
-  color: var(--catalog-topbar-pill-hover);
+  color: var(--text-primary);
 }
 
 .topbar-link__img,
@@ -1954,7 +1918,7 @@ button.nav-item {
 
 .nav--catalog {
   padding: 20px 0 20px 12px;
-  background: var(--catalog-nav-bg);
+  background: var(--bg);
 }
 
 .nav--catalog .nav-group {
@@ -1966,13 +1930,13 @@ button.nav-item {
   padding: 0 10px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--catalog-nav-label);
+  color: var(--text-secondary);
 }
 
 .nav--catalog .nav-label:hover,
 .nav--catalog .nav-label--static:hover {
   background: transparent;
-  color: var(--catalog-nav-label);
+  color: var(--text-secondary);
 }
 
 .nav--catalog .nav-group__items {
@@ -1998,14 +1962,14 @@ button.nav-item {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: var(--catalog-nav-count-bg);
-  color: var(--catalog-nav-count-text);
+  background: var(--bg-content);
+  color: var(--text-secondary);
   font-size: 12px;
   line-height: 20px;
 }
 
 .nav--catalog .emp-cat.active .emp-cat__count {
-  background: var(--catalog-accent);
+  background: var(--accent);
   color: #ffffff;
 }
 
@@ -2035,19 +1999,19 @@ button.nav-item {
 .tutorials-page .emp-search__input {
   height: 28px;
   padding: 0 10px 0 30px;
-  background: var(--catalog-search-bg);
-  color: var(--catalog-search-text);
+  background: var(--bg);
+  color: var(--text-primary);
   font-size: 13px;
 }
 
 .tutorials-page .emp-search__input::placeholder {
-  color: var(--catalog-search-placeholder);
+  color: var(--text-secondary);
 }
 
 .tutorials-page {
   display: flex;
   flex-direction: column;
-  background: var(--tutorials-board-bg);
+  background: var(--bg);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -2058,32 +2022,32 @@ button.nav-item {
   justify-content: space-between;
   gap: 16px;
   padding: 12px 20px;
-  border-bottom: 1px solid var(--tutorials-board-border);
+  border-bottom: 1px solid var(--border);
 }
 
 .tutorials-board__header .btn {
   height: 28px;
   padding: 0 12px;
-  border: 1px solid var(--catalog-button-border);
-  background: var(--catalog-button-bg);
-  color: var(--catalog-button-text);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-regular);
 }
 
 .tutorials-board__header .btn:hover {
-  border-color: var(--catalog-button-hover-border);
-  background: var(--catalog-button-hover-bg);
-  color: var(--catalog-button-hover-text);
+  border-color: var(--border);
+  background: var(--bg);
+  color: var(--text-primary);
 }
 
 .tutorials-board__header .btn.primary {
-  border-color: var(--catalog-accent);
-  background: var(--catalog-accent);
+  border-color: var(--accent);
+  background: var(--accent);
   color: #ffffff;
 }
 
 .tutorials-board__header .btn.primary:hover {
-  border-color: var(--catalog-accent-strong);
-  background: var(--catalog-accent-strong);
+  border-color: var(--accent);
+  background: var(--accent);
   color: #ffffff;
 }
 
@@ -2096,7 +2060,7 @@ button.nav-item {
   font-size: 16px;
   font-weight: 700;
   line-height: 24px;
-  color: var(--tutorials-board-title);
+  color: var(--text-primary);
 }
 
 .tutorials-board__body {
@@ -2122,19 +2086,19 @@ button.nav-item {
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: var(--tutorials-category-text);
+  color: var(--text-regular);
   text-align: left;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .tutorials-category:hover:not(:disabled) {
-  background: var(--tutorials-category-hover-bg);
+  background: var(--bg-content);
 }
 
 .tutorials-category.active {
-  background: var(--tutorials-category-active-bg);
-  color: var(--tutorials-category-active-text);
+  background: var(--bg-content);
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -2190,7 +2154,7 @@ button.nav-item {
 
 .tutorials-content {
   min-width: 0;
-  border-left: 1px solid var(--tutorials-content-border);
+  border-left: 1px solid var(--border);
   flex: 1;
 }
 
@@ -2210,7 +2174,7 @@ button.nav-item {
 .tutorials-course {
   padding: 14px 6px;
   min-width: 0;
-  border-bottom: 1px solid var(--tutorials-course-border);
+  border-bottom: 1px solid var(--border);
   &:last-child {
     border-bottom: none;
   }
@@ -2253,12 +2217,12 @@ button.nav-item {
 .tutorials-lesson__duration {
   justify-self: end;
   font-variant-numeric: tabular-nums;
-  color: var(--tutorials-lesson-duration);
+  color: var(--text-secondary);
   transition: color 0.2s ease;
 }
 
 .tutorials-lesson--clickable:hover {
-  color: var(--catalog-accent-strong);
+  color: var(--accent);
 }
 
 .tutorials-video-context {
@@ -2269,12 +2233,7 @@ button.nav-item {
 
 .tutorials-video-wrap {
   border-radius: 6px;
-  background: var(--tutorials-video-bg);
-}
-
-.tutorials-bilibili-link {
-  background: var(--tutorials-link-overlay-bg);
-  color: #ffffff;
+  background: var(--bg);
 }
 
 .tutorials-detail-modal {
@@ -2313,13 +2272,13 @@ button.nav-item {
   align-items: center;
   line-height: 20px;
   font-size: 14px;
-  color: var(--tutorials-category-text);
+  color: var(--text-regular);
   text-decoration: none;
   transition: color 0.2s ease, text-decoration-color 0.2s ease;
 }
 
 .tutorials-detail-modal__link:hover {
-  color: var(--catalog-nav-item-hover-text);
+  color: var(--accent);
   text-decoration: underline;
 }
 
@@ -2336,10 +2295,9 @@ button.nav-item {
 }
 
 .emp-detail-modal {
-  border: 1px solid var(--detail-modal-border);
+  border: 1px solid var(--border);
   border-radius: 18px;
-  background: var(--detail-modal-bg);
-  box-shadow: var(--detail-modal-shadow);
+  background: var(--bg);
 }
 
 .emp-detail-modal--large {
@@ -2351,32 +2309,32 @@ button.nav-item {
 .emp-detail-modal__header {
   gap: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--detail-modal-divider);
+  border-bottom: 1px solid var(--border);
 }
 
 .emp-detail-summary {
-  color: var(--detail-summary-color);
+  color: var(--text-regular);
   font-size: 14px;
   line-height: 1.7;
 }
 
 .emp-detail-status {
-  border: 1px solid var(--detail-status-border);
-  background: var(--detail-status-bg);
-  color: var(--detail-status-text);
+  border: 1px solid var(--border);
+  background: var(--bg-content);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 700;
 }
 
 .emp-detail-modal .btn.primary {
-  border-color: var(--catalog-accent);
-  background: var(--catalog-accent);
+  border-color: var(--accent);
+  background: var(--accent);
   color: #ffffff;
 }
 
 .emp-detail-modal .btn.primary:hover {
-  border-color: var(--catalog-accent-strong);
-  background: var(--catalog-accent-strong);
+  border-color: var(--accent);
+  background: var(--accent);
   color: #ffffff;
 }
 

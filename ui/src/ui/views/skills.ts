@@ -227,7 +227,7 @@ export function renderSkills(props: SkillsProps) {
                               style="
                                 margin-top: 8px;
                                 padding: 12px;
-                                background: var(--bg-muted, #f5f5f5);
+                                background: var(--bg-content, #f5f5f5);
                                 border-radius: 6px;
                                 overflow: auto;
                                 max-height: 200px;

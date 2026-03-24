@@ -69,8 +69,8 @@
   height: 32px;
   border-radius: 50%;
   border: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--muted);
+  background: var(--bg);
+  color: var(--text-secondary);
   font-size: 20px;
   line-height: 1;
   cursor: pointer;
@@ -85,8 +85,8 @@
 }
 
 .chat-focus-exit:hover {
-  background: var(--panel-strong);
-  color: var(--text);
+  background: var(--bg-content);
+  color: var(--text-regular);
   border-color: var(--accent);
 }
 
@@ -110,8 +110,8 @@
   margin: 8px auto;
   font-size: 13px;
   font-family: var(--font-body);
-  color: var(--text);
-  background: var(--panel-strong);
+  color: var(--text-regular);
+  background: var(--bg-content);
   border: 1px solid var(--border);
   border-radius: 999px;
   cursor: pointer;
@@ -123,7 +123,7 @@
 }
 
 .chat-new-messages:hover {
-  background: var(--panel);
+  background: var(--bg);
   border-color: var(--accent);
 }
 
@@ -157,15 +157,15 @@
   flex-direction: column;
   gap: 0;
   padding: 12px 14px 10px;
-  background: var(--panel);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 20px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .chat-compose__inner:focus-within {
-  border-color: var(--border-strong);
-  box-shadow: 0 0 0 1px var(--border-strong);
+  border-color: var(--border-primary);
+  box-shadow: 0 0 0 1px var(--border-primary);
 }
 
 /* Image attachments preview */
@@ -174,7 +174,7 @@
   flex-wrap: wrap;
   gap: 8px;
   padding: 8px;
-  background: var(--panel);
+  background: var(--bg);
   border-radius: 8px;
   border: 1px solid var(--border);
   width: fit-content;
@@ -319,7 +319,7 @@
 .chat-compose__model-label {
   display: inline-block !important;
   font-size: 13px;
-  color: var(--muted);
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
@@ -331,7 +331,7 @@
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border);
-  color: var(--text);
+  color: var(--text-regular);
 }
 
 .chat-compose__model-select select:hover:not(:disabled) {
@@ -340,7 +340,7 @@
 
 .chat-compose__model-select select:focus {
   outline: none;
-  border-color: var(--border-strong);
+  border-color: var(--border-primary);
 }
 
 .chat-attachment__file {
@@ -456,7 +456,7 @@
 }
 
 .chat-compose .chat-compose__field textarea::placeholder {
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
 .chat-compose .chat-compose__field textarea:focus {
@@ -483,17 +483,16 @@
   height: 36px !important;
   min-height: 36px !important;
   line-height: 1 !important;
-  color: var(--text) !important;
-  background: var(--panel) !important;
+  color: var(--text-regular) !important;
+  background: var(--bg) !important;
   border: 1px solid var(--border) !important;
   border-radius: 18px !important;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
 }
 
 .chat-compose__secondary:hover:not(:disabled) {
-  color: var(--text-strong) !important;
-  background: var(--panel-hover) !important;
-  border-color: var(--border-strong) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-primary) !important;
 }
 
 /* 通义千问风格：圆形绿色发送按钮 */
@@ -519,7 +518,7 @@
 }
 
 .chat-compose__send:disabled {
-  background: var(--muted) !important;
+  background: var(--text-secondary) !important;
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -593,13 +592,13 @@
   background: #ffffff;
   border-color: var(--border);
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
 :root[data-theme="light"] .btn--icon:hover {
   background: #ffffff;
-  border-color: var(--border-strong);
-  color: var(--text);
+  border-color: var(--border-primary);
+  color: var(--text-regular);
 }
 
 .btn--icon svg {

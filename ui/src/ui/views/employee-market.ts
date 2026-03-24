@@ -231,7 +231,7 @@ function renderEmployeeDetailActions(props: EmployeeMarketProps, detail: Employe
     return html`
       <div class="market-card-actions">
         ${props.onDelete && localId
-          ? html`<button class="market-card-button market-card-button--danger" type="button" @click=${() => void props.onDelete!(localId)}>删除</button>`
+          ? html`<button class="market-card-button" type="button" @click=${() => void props.onDelete!(localId)}>删除</button>`
           : nothing}
         ${props.onOpenEmployee && localId
           ? html`<button class="market-card-button market-card-button--ghost" type="button" @click=${() => props.onOpenEmployee!(localId)}>会话</button>`

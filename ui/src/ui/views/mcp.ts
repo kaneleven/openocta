@@ -346,7 +346,7 @@ export function renderMcpEditModal(props: McpEditModalProps) {
                       />
                     </div>
                   </div>
-                  <div class="mcp-connection-tabs" style="display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--input, #333); padding-bottom: 4px;">
+                  <div class="mcp-connection-tabs" style="display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border, #333); padding-bottom: 4px;">
                     <button
                       type="button"
                       class="btn ${(props.editConnectionType ?? "stdio") === "stdio" ? "primary" : ""}"
@@ -514,7 +514,7 @@ export function renderMcp(props: McpProps) {
                     props.addEditMode === "form"
                       ? html`
                           <div class="config-form" id="mcp-add-form">
-                            <div class="mcp-connection-tabs" style="display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--input, #333); padding-bottom: 4px;">
+                            <div class="mcp-connection-tabs" style="display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border, #333); padding-bottom: 4px;">
                               <button
                                 type="button"
                                 class="btn ${(props.addConnectionType ?? "stdio") === "stdio" ? "primary" : ""}"
@@ -789,7 +789,7 @@ export function renderMcp(props: McpProps) {
                                 />
                               </div>
                             </div>
-                            <div class="mcp-connection-tabs" style="display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--input, #333); padding-bottom: 4px;">
+                            <div class="mcp-connection-tabs" style="display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border, #333); padding-bottom: 4px;">
                               <button
                                 type="button"
                                 class="btn ${(props.editConnectionType ?? "stdio") === "stdio" ? "primary" : ""}"

@@ -1072,7 +1072,7 @@ function renderEmployeeMcpItem(item: EmployeeMcpItem, cb: EmployeeMcpCallbacks):
                     display: flex;
                     gap: 4px;
                     margin-top: 12px;
-                    border-bottom: 1px solid var(--input, #333);
+                    border-bottom: 1px solid var(--border, #333);
                     padding-bottom: 4px;
                   "
                 >
