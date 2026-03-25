@@ -172,18 +172,28 @@ func ApprovalsListHandler(opts HandlerOpts) error {
 	}
 
 	now := time.Now()
-	var approved, pending, denied []map[string]interface{}
+	var approved, pendingActive, pendingExpired, denied []map[string]interface{}
 	for _, rec := range snap.Records {
 		entry := toListEntry(rec, now, timeoutSeconds)
 		switch rec.State {
 		case string(octasecurity.ApprovalApproved):
 			approved = append(approved, entry)
 		case string(octasecurity.ApprovalPending):
-			pending = append(pending, entry) // 含 expired 状态
+			status, _ := entry["status"].(string)
+			if status == "expired" {
+				pendingExpired = append(pendingExpired, entry)
+			} else {
+				pendingActive = append(pendingActive, entry)
+			}
 		case string(octasecurity.ApprovalDenied):
 			denied = append(denied, entry)
 		default:
-			pending = append(pending, entry)
+			status, _ := entry["status"].(string)
+			if status == "expired" {
+				pendingExpired = append(pendingExpired, entry)
+			} else {
+				pendingActive = append(pendingActive, entry)
+			}
 		}
 	}
 
@@ -192,13 +202,20 @@ func ApprovalsListHandler(opts HandlerOpts) error {
 		whitelisted = append(whitelisted, toWhitelistEntry(sessionID, expiresAt, now))
 	}
 
+	// entries：全量展示（含已过期待清理项）；pending：仅真实待人工审批且在超时窗口内的记录
+	entries := append([]map[string]interface{}{}, approved...)
+	entries = append(entries, pendingActive...)
+	entries = append(entries, pendingExpired...)
+	entries = append(entries, denied...)
+
 	opts.Respond(true, map[string]interface{}{
-		"storePath":   storeFile,
-		"approved":    approved,
-		"pending":     pending,
-		"denied":      denied,
-		"whitelisted": whitelisted,
-		"entries":     append(append(append([]map[string]interface{}{}, approved...), pending...), denied...), // 兼容旧版
+		"storePath":      storeFile,
+		"approved":       approved,
+		"pending":        pendingActive,
+		"pendingExpired": pendingExpired,
+		"denied":         denied,
+		"whitelisted":    whitelisted,
+		"entries":        entries,
 	}, nil, nil)
 	return nil
 }

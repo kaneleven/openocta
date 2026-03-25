@@ -1,7 +1,7 @@
 import type { OpenClawApp } from "./app.ts";
 import type { ApprovalsListResult } from "./controllers/approvals.ts";
 import {
-  collectPendingApprovalIds,
+  collectActivePendingApprovalIds,
   normalizeApprovalsListResult,
 } from "./controllers/approvals.ts";
 
@@ -16,7 +16,7 @@ export async function runApprovalsBannerPoll(host: OpenClawApp): Promise<void> {
     const result = normalizeApprovalsListResult(res);
     host.approvalsResult = result;
 
-    const currentIds = new Set(collectPendingApprovalIds(result));
+    const currentIds = new Set(collectActivePendingApprovalIds(result));
     const baseline = new Set(host.approvalBannerBaselineIds);
     for (const id of baseline) {
       if (!currentIds.has(id)) {

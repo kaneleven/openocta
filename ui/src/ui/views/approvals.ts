@@ -62,12 +62,8 @@ function sortQueueEntries(entries: ApprovalEntry[]): ApprovalEntry[] {
 
 export function renderApprovals(props: ApprovalsProps) {
   const r = props.approvalsResult;
-  const pending = r?.pending ?? r?.entries?.filter((e) => e.status === "pending" || e.status === "expired") ?? [];
-  const approved = r?.approved ?? r?.entries?.filter((e) => e.status === "approved") ?? [];
-  const denied = r?.denied ?? r?.entries?.filter((e) => e.status === "denied") ?? [];
   const whitelisted = r?.whitelisted ?? [];
-
-  const queueEntries = sortQueueEntries([...pending, ...approved, ...denied]);
+  const queueEntries = sortQueueEntries([...(r?.entries ?? [])]);
 
   return html`
     <section class="card">

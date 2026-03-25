@@ -2392,7 +2392,7 @@ export function renderApp(state: AppViewState) {
                   getSecurityFromConfig(state) ??
                   {},
                 saving: state.configSaving,
-                pendingApprovalsCount: (state.approvalsResult?.pending ?? state.approvalsResult?.entries ?? []).filter((e) => e.status === "pending" && !e.expired).length,
+                pendingApprovalsCount: state.approvalsResult?.pending?.length ?? 0,
                 onPresetApply: (preset) => handleSecurityPresetApply(state, preset),
                 onPatch: (path, value) => {
                   if (!state.securityForm) {
