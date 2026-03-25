@@ -1596,6 +1596,47 @@ button.nav-item {
   opacity: 0.9;
 }
 
+@media (max-width: 1400px) {
+  .topbar-status .pill--version .topbar-status__label,
+  .topbar-status .pill--health .topbar-status__label,
+  .topbar-status .pill--link .topbar-link__label {
+    display: none;
+  }
+
+  .topbar-status .pill {
+    padding: 0 6px;
+  }
+
+  .topbar-status .pill--link .topbar-link {
+    gap: 0;
+  }
+
+  .topbar-status .pill--health {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .topbar-status {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .top-tabs {
+    gap: 10px;
+  }
+
+  .top-tab {
+    gap: 0;
+    padding: 0 10px;
+  }
+
+  .top-tab__label {
+    display: none;
+  }
+}
+
 .nav--catalog {
   padding: 20px 0 20px 12px;
   background: var(--bg);

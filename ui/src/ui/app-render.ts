@@ -285,7 +285,7 @@ export function renderApp(state: AppViewState) {
                     })}
                 >
                   ${iconEl}
-                  ${(item as any).label}
+                  <span class="top-tab__label">${(item as any).label}</span>
                 </button>
               `;
             }
@@ -302,17 +302,17 @@ export function renderApp(state: AppViewState) {
                 type="button"
               >
                 ${iconEl}
-                ${(item as any).label}
+                <span class="top-tab__label">${(item as any).label}</span>
               </button>
             `;
           })}
         </nav>
         <div class="topbar-status">
           <div class="pill pill--version">
-            <span>Version</span>
-            <span>${state.configSchemaVersion ?? "---"}</span>
+            <span class="topbar-status__label">Version</span>
+            <span class="topbar-status__value">${state.configSchemaVersion ?? "---"}</span>
           </div>
-          <div class="pill">
+          <div class="pill pill--link">
             <button
               type="button"
               title="GitHub 仓库（新窗口打开）"
@@ -324,10 +324,10 @@ export function renderApp(state: AppViewState) {
                 })}
             >
               <span class="topbar-link__icon" aria-hidden="true">${icons.github}</span>
-              <span>GitHub</span>
+              <span class="topbar-link__label">GitHub</span>
             </button>
           </div>
-          <div class="pill">
+          <div class="pill pill--link">
             <button
               type="button"
               title="OpenOcta 官网（新窗口打开）"
@@ -345,13 +345,13 @@ export function renderApp(state: AppViewState) {
                 width="16"
                 height="16"
               />
-              <span>官网</span>
+              <span class="topbar-link__label">官网</span>
             </button>
           </div>
-          <div class="pill">
+          <div class="pill pill--health">
             <span class="statusDot ${state.connected ? "ok" : ""}"></span>
-            <span>Health</span>
-            <span>${state.connected ? "OK" : "Offline"}</span>
+            <span class="topbar-status__label">Health</span>
+            <span class="topbar-status__value">${state.connected ? "OK" : "Offline"}</span>
           </div>
         </div>
       </header>
