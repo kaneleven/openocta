@@ -491,7 +491,7 @@ function renderUsageMosaic(
             ${stats.weekdayTotals.map((part) => {
               const intensity = Math.min(part.tokens / maxWeekday, 1);
               const bg =
-                part.tokens > 0 ? `rgba(255, 77, 77, ${0.12 + intensity * 0.6})` : "transparent";
+                part.tokens > 0 ? `rgba(36, 186, 81, ${0.12 + intensity * 0.6})` : "transparent";
               return html`
                 <div class="usage-daypart-cell" style="background: ${bg};">
                   <div class="usage-daypart-label">${part.label}</div>
@@ -509,9 +509,9 @@ function renderUsageMosaic(
           <div class="usage-hour-grid">
             ${stats.hourTotals.map((value, hour) => {
               const intensity = Math.min(value / maxHour, 1);
-              const bg = value > 0 ? `rgba(255, 77, 77, ${0.08 + intensity * 0.7})` : "transparent";
+              const bg = value > 0 ? `rgba(36, 186, 81, ${0.08 + intensity * 0.7})` : "transparent";
               const title = `${hour}:00 · ${formatTokens(value)} ${t("usageTokensUnit")}`;
-              const border = intensity > 0.7 ? "rgba(255, 77, 77, 0.6)" : "rgba(255, 77, 77, 0.2)";
+              const border = intensity > 0.7 ? "rgba(36, 186, 81, 0.6)" : "rgba(36, 186, 81, 0.2)";
               const selected = selectedHours.includes(hour);
               return html`
                 <div
@@ -2804,15 +2804,15 @@ export function renderUsage(props: UsageProps) {
                 align-items: center;
                 gap: 6px;
                 padding: 4px 10px;
-                background: rgba(255, 77, 77, 0.1);
+                background: var(--accent-subtle);
                 border-radius: 4px;
                 font-size: 12px;
-                color: #ff4d4d;
+                color: var(--accent);
               ">
                 <span style="
                   width: 10px;
                   height: 10px;
-                  border: 2px solid #ff4d4d;
+                  border: 2px solid var(--accent);
                   border-top-color: transparent;
                   border-radius: 50%;
                   animation: initial-spin 0.6s linear infinite;
