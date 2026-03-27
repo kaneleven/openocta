@@ -211,7 +211,6 @@ github.com/spf13/cobra v1.8.1/go.mod h1:wHxEcudfqmLYa8iTfL+OuZPbBZkmvliBWKIezN3k
 github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
 github.com/spf13/pflag v1.0.6 h1:jFzHGLGAlb3ruxLB8MhbI6A8+AQX/2eW4qeyNZXNp2o=
 github.com/spf13/pflag v1.0.6/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
-github.com/stellarlinkco/agentsdk-go v1.0.0/go.mod h1:KAZ1p92Si3Du7xCkUKLXdGW3bOP6kuIFHj3JOYMdz/A=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.4.0/go.mod h1:YvHI0jy2hoMjB+UWwv71VJQ9isScKT/TqJzVSSt89Yw=
 github.com/stretchr/objx v0.5.0/go.mod h1:Yh+to48EsGEfYuaHDzXPcE3xhTkx73EhmCGUpEOglKo=
@@ -255,6 +254,8 @@ github.com/yosida95/uritemplate/v3 v3.0.2/go.mod h1:ILOh0sOhIJR3+L/8afwt/kE++YT0
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
+github.com/zhanbei1/agentsdk-go v1.0.2 h1:sQqEz9OEtPCA0zSF0kFNs+kPHtScsI5Keie9FKhHUXM=
+github.com/zhanbei1/agentsdk-go v1.0.2/go.mod h1:a3CLWiprNe3ny3+9TfsIoGbG3aZtOX2IgQcX6JHYh0Y=
 github.com/zhanbei1/wecom-aibot-go-sdk v0.0.2 h1:G6CwRijk4p+3+gmvWwg1juBr+89CO3PMKSrrM1JFGlc=
 github.com/zhanbei1/wecom-aibot-go-sdk v0.0.2/go.mod h1:Ll6l0a8eyas5cbYRAyKBlai79z+WpBSWCS+/+IL5nDc=
 go.etcd.io/bbolt v1.4.0 h1:TU77id3TnN/zKr7CO/uk+fBCwF2jGcMuw2B/FMAzYIk=
