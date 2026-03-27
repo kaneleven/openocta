@@ -67,7 +67,7 @@ func NewRuntime(appID, appSecret, domain, encryptKey, verificationToken string, 
 	}
 }
 
-// Start 启动 Feishu WebSocket 连接并注册事件处理。
+// Start 启动飞书入站 WebSocket。助手出站由网关 handlers.deliverAssistantToIM 在整轮流式结束后调用 Send（与钉钉/企微共用摘录逻辑）。
 func (r *Runtime) Start(ctx context.Context) error {
 	if err := r.BaseRuntimeImpl.Start(ctx); err != nil {
 		return err
@@ -193,7 +193,7 @@ func (r *Runtime) Send(msg *channels.RuntimeOutboundMessage) error {
 	return err
 }
 
-// SendStream 默认实现：收集完整内容后调用 Send。
+// SendStream 默认实现：仅聚合最终输出片段后调用 Send（与 QQ 一致，避免将思考/中间态发到飞书）。
 func (r *Runtime) SendStream(chatID string, stream <-chan *channels.RuntimeStreamChunk) error {
 	var buf strings.Builder
 	for chunk := range stream {
@@ -203,18 +203,21 @@ func (r *Runtime) SendStream(chatID string, stream <-chan *channels.RuntimeStrea
 		if chunk.Error != "" {
 			return fmt.Errorf("stream error: %s", chunk.Error)
 		}
-		if !chunk.IsThinking {
-			buf.WriteString(chunk.Content)
-		}
 		if chunk.IsComplete {
+			buf.WriteString(chunk.Content)
 			break
 		}
+		//if chunk.IsComplete {
+		//	break
+		//}
 	}
-	msg := &channels.RuntimeOutboundMessage{
+	if buf.Len() == 0 {
+		return nil
+	}
+	return r.Send(&channels.RuntimeOutboundMessage{
 		ChatID:  chatID,
 		Content: buf.String(),
-	}
-	return r.Send(msg)
+	})
 }
 
 // fetchBotOpenId 获取机器人的 open_id。

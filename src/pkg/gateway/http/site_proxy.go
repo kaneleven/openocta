@@ -21,7 +21,10 @@ import (
 	"github.com/openocta/openocta/pkg/installmetadata"
 )
 
-const siteAPIEnvKey = "OPENOCTA_SITE_API_BASE_URL"
+const (
+	siteAPIEnvKey         = "OPENOCTA_SITE_API_BASE_URL"
+	siteAPIDefaultTimeout = 3 * time.Second
+)
 
 var (
 	siteAPITransport     http.RoundTripper
@@ -52,7 +55,8 @@ func siteAPIRoundTripper() http.RoundTripper {
 	return siteAPITransport
 }
 
-// newSiteAPIHTTPClient is used for all outbound requests to OPENOCTA_SITE_API_BASE_URL (proxy, install zip fetch).
+// newSiteAPIHTTPClient is used for outbound requests to OPENOCTA_SITE_API_BASE_URL.
+// 市场列表/详情/透传使用 siteAPIDefaultTimeout；安装包下载在 site_install.go 中单独设置更长超时。
 func newSiteAPIHTTPClient(timeout time.Duration) *http.Client {
 	return &http.Client{
 		Timeout:   timeout,
@@ -88,21 +92,12 @@ func setSiteProxyCORSHeaders(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization")
 }
 
-type siteProxyError struct {
-	Error    string `json:"error"`
-	Detail   string `json:"detail,omitempty"`
-	Upstream string `json:"upstream,omitempty"`
-}
-
-func writeSiteProxyFailure(w http.ResponseWriter, status int, detail string, upstream string) {
+// writeSiteProxyGenericUnavailable 不向客户端暴露上游 URL 或底层错误信息。
+func writeSiteProxyGenericUnavailable(w http.ResponseWriter) {
 	setSiteProxyCORSHeaders(w)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(siteProxyError{
-		Error:    "连接 openocta 官网失败",
-		Detail:   strings.TrimSpace(detail),
-		Upstream: strings.TrimSpace(upstream),
-	})
+	w.WriteHeader(http.StatusServiceUnavailable)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": "服务暂不可用"})
 }
 
 func (s *Server) siteAPIBaseURL() string {
@@ -281,12 +276,22 @@ func serveLocalMcpDetailJSON(w http.ResponseWriter, serverKey string, env func(s
 	return true
 }
 
-func (s *Server) proxySiteGET(w http.ResponseWriter, r *http.Request, upstreamPath string) {
+// proxySiteGETMode 控制官网不可达时的响应形态（不向客户端泄露上游地址或底层错误）。
+type proxySiteGETMode int
+
+const (
+	proxySiteGETDownload         proxySiteGETMode = iota // 二进制/下载：503 + 通用 JSON
+	proxySiteGETSilentJSONArray                          // 200 []
+	proxySiteGETSilentJSONObject                         // 200 {}
+	proxySiteGETNotFound                                 // 404 无 body
+)
+
+func (s *Server) proxySiteGET(w http.ResponseWriter, r *http.Request, upstreamPath string, onFail proxySiteGETMode) {
 	setSiteProxyCORSHeaders(w)
 	base := s.siteAPIBaseURL()
 	u, err := url.Parse(base)
 	if err != nil {
-		writeSiteProxyFailure(w, http.StatusBadGateway, "invalid site api base url", base)
+		proxySiteGETWriteFallback(w, onFail)
 		return
 	}
 
@@ -296,15 +301,15 @@ func (s *Server) proxySiteGET(w http.ResponseWriter, r *http.Request, upstreamPa
 
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, u.String(), nil)
 	if err != nil {
-		writeSiteProxyFailure(w, http.StatusBadGateway, "proxy request build failed", u.String())
+		proxySiteGETWriteFallback(w, onFail)
 		return
 	}
 	req.Header.Set("Accept", "application/json")
 
-	client := newSiteAPIHTTPClient(8 * time.Second)
+	client := newSiteAPIHTTPClient(siteAPIDefaultTimeout)
 	res, err := client.Do(req)
 	if err != nil {
-		writeSiteProxyFailure(w, http.StatusBadGateway, err.Error(), u.String())
+		proxySiteGETWriteFallback(w, onFail)
 		return
 	}
 	defer res.Body.Close()
@@ -317,6 +322,24 @@ func (s *Server) proxySiteGET(w http.ResponseWriter, r *http.Request, upstreamPa
 	w.Header().Set("Content-Type", ct)
 	w.WriteHeader(res.StatusCode)
 	_, _ = io.Copy(w, res.Body)
+}
+
+func proxySiteGETWriteFallback(w http.ResponseWriter, mode proxySiteGETMode) {
+	setSiteProxyCORSHeaders(w)
+	switch mode {
+	case proxySiteGETSilentJSONArray:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("[]"))
+	case proxySiteGETSilentJSONObject:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("{}"))
+	case proxySiteGETNotFound:
+		w.WriteHeader(http.StatusNotFound)
+	default:
+		writeSiteProxyGenericUnavailable(w)
+	}
 }
 
 // --- /api/v1 proxies ---
@@ -344,25 +367,60 @@ type employeeMarketItem struct {
 	LocalID   string `json:"localId,omitempty"`   // 安装后的本地 id
 }
 
+// writeEmployeeMarketItemFromLocalManifest 从本地员工目录生成与官网详情兼容的 JSON。
+// markInstalled 为 true 时表示该员工来自市场安装记录（远程 id 与 localId 一并返回）。
+func writeEmployeeMarketItemFromLocalManifest(w http.ResponseWriter, marketID, localID string, env func(string) string, markInstalled bool) bool {
+	m, err := employees.LoadManifest(localID, env)
+	if err != nil || m == nil {
+		return false
+	}
+	typeVal := strings.TrimSpace(m.Type)
+	if typeVal == "" {
+		typeVal = "其它"
+	}
+	enabled := m.Enabled
+	readme := ""
+	readmePath := filepath.Join(employees.ResolveEmployeesDir(env), localID, "README.md")
+	if data, err := os.ReadFile(readmePath); err == nil && len(data) > 0 {
+		readme = string(data)
+	}
+	detail := employeeMarketItem{
+		ID:          marketID,
+		Name:        m.Name,
+		Description: m.Description,
+		Category:    typeVal,
+		Status:      "open",
+		Readme:      readme,
+		Enabled:     &enabled,
+	}
+	if markInstalled {
+		detail.Installed = true
+		detail.LocalID = localID
+	}
+	setSiteProxyCORSHeaders(w)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(detail)
+	return true
+}
+
 func (s *Server) handleSiteEmployees(w http.ResponseWriter, r *http.Request) {
 	// /api/v1/employees：合并远程 + 本地自建员工
 	setSiteProxyCORSHeaders(w)
 	base := s.siteAPIBaseURL()
-	u, err := url.Parse(base)
-	if err != nil {
-		writeSiteProxyFailure(w, http.StatusBadGateway, "invalid site api base url", base)
-		return
-	}
-	u.Path = strings.TrimRight(u.Path, "/") + "/api/v1/employees"
-	u.RawQuery = r.URL.RawQuery
-
 	var remote []employeeMarketItem
-	req, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, u.String(), nil)
-	req.Header.Set("Accept", "application/json")
-	client := newSiteAPIHTTPClient(8 * time.Second)
-	if res, err := client.Do(req); err == nil {
-		_ = json.NewDecoder(res.Body).Decode(&remote)
-		res.Body.Close()
+	if u, err := url.Parse(base); err == nil {
+		u.Path = strings.TrimRight(u.Path, "/") + "/api/v1/employees"
+		u.RawQuery = r.URL.RawQuery
+		req, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, u.String(), nil)
+		req.Header.Set("Accept", "application/json")
+		client := newSiteAPIHTTPClient(siteAPIDefaultTimeout)
+		if res, err := client.Do(req); err == nil && res != nil {
+			if res.StatusCode == http.StatusOK {
+				_ = json.NewDecoder(res.Body).Decode(&remote)
+			}
+			res.Body.Close()
+		}
 	}
 	if remote == nil {
 		remote = []employeeMarketItem{}
@@ -415,67 +473,56 @@ func (s *Server) handleSiteEmployeeDetail(w http.ResponseWriter, r *http.Request
 	if strings.HasPrefix(id, "local:") {
 		localID := strings.TrimPrefix(id, "local:")
 		env := func(k string) string { return os.Getenv(k) }
-		m, err := employees.LoadManifest(localID, env)
-		if err != nil || m == nil {
+		if !writeEmployeeMarketItemFromLocalManifest(w, id, localID, env, false) {
 			http.NotFound(w, r)
-			return
 		}
-		typeVal := strings.TrimSpace(m.Type)
-		if typeVal == "" {
-			typeVal = "其它"
-		}
-		enabled := m.Enabled
-		readme := ""
-		readmePath := filepath.Join(employees.ResolveEmployeesDir(env), localID, "README.md")
-		if data, err := os.ReadFile(readmePath); err == nil && len(data) > 0 {
-			readme = string(data)
-		}
-		detail := employeeMarketItem{
-			ID:          id,
-			Name:        m.Name,
-			Description: m.Description,
-			Category:    typeVal,
-			Status:      "open",
-			Readme:      readme,
-			Enabled:     &enabled,
-		}
-		setSiteProxyCORSHeaders(w)
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(detail)
 		return
 	}
-	// 远程员工详情：代理后合并 installed/localId
+	// 远程员工详情：代理后合并 installed/localId；官网不可用时仅返回已安装员工的本地详情
+	env := func(k string) string { return os.Getenv(k) }
+	empMap := installmetadata.EmployeeInstallMap(env)
+	tryLocalFromRemoteMarket := func() bool {
+		if localID, ok := empMap[id]; ok {
+			return writeEmployeeMarketItemFromLocalManifest(w, id, localID, env, true)
+		}
+		return false
+	}
+
 	base := s.siteAPIBaseURL()
 	u, err := url.Parse(base)
 	if err != nil {
-		writeSiteProxyFailure(w, http.StatusBadGateway, "invalid site api base url", base)
+		if tryLocalFromRemoteMarket() {
+			return
+		}
+		http.NotFound(w, r)
 		return
 	}
 	u.Path = strings.TrimRight(u.Path, "/") + "/api/v1/employees/" + url.PathEscape(id)
 	req, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, u.String(), nil)
 	req.Header.Set("Accept", "application/json")
-	client := newSiteAPIHTTPClient(8 * time.Second)
+	client := newSiteAPIHTTPClient(siteAPIDefaultTimeout)
 	res, err := client.Do(req)
 	if err != nil {
-		writeSiteProxyFailure(w, http.StatusBadGateway, err.Error(), u.String())
+		if tryLocalFromRemoteMarket() {
+			return
+		}
+		http.NotFound(w, r)
 		return
 	}
 	defer res.Body.Close()
 	body, _ := io.ReadAll(res.Body)
 	var detail employeeMarketItem
-	if err := json.Unmarshal(body, &detail); err != nil {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(res.StatusCode)
-		_, _ = w.Write(body)
+	if res.StatusCode != http.StatusOK || json.Unmarshal(body, &detail) != nil {
+		if tryLocalFromRemoteMarket() {
+			return
+		}
+		http.NotFound(w, r)
 		return
 	}
 	if detail.Readme == "" && detail.Content != "" {
 		detail.Readme = detail.Content
 	}
 	detail.Content = ""
-	env := func(k string) string { return os.Getenv(k) }
-	empMap := installmetadata.EmployeeInstallMap(env)
 	if localID, ok := empMap[id]; ok {
 		detail.Installed = true
 		detail.LocalID = localID
@@ -502,38 +549,32 @@ func (s *Server) handleSiteEmployeeDownload(w http.ResponseWriter, r *http.Reque
 		})
 		return
 	}
-	s.proxySiteGET(w, r, "/api/v1/employees/"+url.PathEscape(id)+"/download")
+	s.proxySiteGET(w, r, "/api/v1/employees/"+url.PathEscape(id)+"/download", proxySiteGETDownload)
 }
 
 func (s *Server) handleSiteMcps(w http.ResponseWriter, r *http.Request) {
 	// 代理 MCP 列表并合并 .install-metadata.json 中的已安装状态
 	setSiteProxyCORSHeaders(w)
-	base := s.siteAPIBaseURL()
-	u, err := url.Parse(base)
-	if err != nil {
-		writeSiteProxyFailure(w, http.StatusBadGateway, "invalid site api base url", base)
-		return
-	}
-	u.Path = strings.TrimRight(u.Path, "/") + "/api/v1/mcps"
-	u.RawQuery = r.URL.RawQuery
-	req, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, u.String(), nil)
-	req.Header.Set("Accept", "application/json")
-	client := newSiteAPIHTTPClient(8 * time.Second)
-	res, err := client.Do(req)
-	if err != nil {
-		writeSiteProxyFailure(w, http.StatusBadGateway, err.Error(), u.String())
-		return
-	}
-	defer res.Body.Close()
-	body, _ := io.ReadAll(res.Body)
-	var mcps []map[string]interface{}
-	if err := json.Unmarshal(body, &mcps); err != nil {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(res.StatusCode)
-		_, _ = w.Write(body)
-		return
-	}
 	env := func(k string) string { return os.Getenv(k) }
+	var mcps []map[string]interface{}
+	base := s.siteAPIBaseURL()
+	if u, err := url.Parse(base); err == nil {
+		u.Path = strings.TrimRight(u.Path, "/") + "/api/v1/mcps"
+		u.RawQuery = r.URL.RawQuery
+		req, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, u.String(), nil)
+		req.Header.Set("Accept", "application/json")
+		client := newSiteAPIHTTPClient(siteAPIDefaultTimeout)
+		if res, err := client.Do(req); err == nil && res != nil {
+			body, _ := io.ReadAll(res.Body)
+			res.Body.Close()
+			if res.StatusCode == http.StatusOK {
+				_ = json.Unmarshal(body, &mcps)
+			}
+		}
+	}
+	if mcps == nil {
+		mcps = []map[string]interface{}{}
+	}
 	mcpInstallMap := installmetadata.McpInstallMap(env)
 	for i := range mcps {
 		if id, ok := mcps[i]["id"]; ok {
@@ -569,31 +610,44 @@ func (s *Server) handleSiteMcpDetail(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	mcpMap := installmetadata.McpInstallMap(env)
+	tryInstalledLocalMcp := func() bool {
+		if serverKey, ok := mcpMap[id]; ok {
+			return serveLocalMcpDetailJSON(w, serverKey, env)
+		}
+		return false
+	}
 	base := s.siteAPIBaseURL()
 	u, err := url.Parse(base)
 	if err != nil {
-		writeSiteProxyFailure(w, http.StatusBadGateway, "invalid site api base url", base)
+		if tryInstalledLocalMcp() {
+			return
+		}
+		http.NotFound(w, r)
 		return
 	}
 	u.Path = strings.TrimRight(u.Path, "/") + "/api/v1/mcps/" + url.PathEscape(id)
 	req, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, u.String(), nil)
 	req.Header.Set("Accept", "application/json")
-	client := newSiteAPIHTTPClient(8 * time.Second)
+	client := newSiteAPIHTTPClient(siteAPIDefaultTimeout)
 	res, err := client.Do(req)
 	if err != nil {
-		writeSiteProxyFailure(w, http.StatusBadGateway, err.Error(), u.String())
+		if tryInstalledLocalMcp() {
+			return
+		}
+		http.NotFound(w, r)
 		return
 	}
 	defer res.Body.Close()
 	body, _ := io.ReadAll(res.Body)
 	var detail map[string]interface{}
-	if err := json.Unmarshal(body, &detail); err != nil {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(res.StatusCode)
-		_, _ = w.Write(body)
+	if res.StatusCode != http.StatusOK || json.Unmarshal(body, &detail) != nil {
+		if tryInstalledLocalMcp() {
+			return
+		}
+		http.NotFound(w, r)
 		return
 	}
-	mcpMap := installmetadata.McpInstallMap(env)
 	if serverKey, ok := mcpMap[id]; ok {
 		detail["installed"] = true
 		detail["serverKey"] = serverKey
@@ -620,38 +674,32 @@ func (s *Server) handleSiteMcpDownload(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	s.proxySiteGET(w, r, "/api/v1/mcps/"+url.PathEscape(id)+"/download")
+	s.proxySiteGET(w, r, "/api/v1/mcps/"+url.PathEscape(id)+"/download", proxySiteGETDownload)
 }
 
 func (s *Server) handleSiteSkills(w http.ResponseWriter, r *http.Request) {
 	// 代理技能列表并合并 .install-metadata.json 中的已安装状态
 	setSiteProxyCORSHeaders(w)
-	base := s.siteAPIBaseURL()
-	u, err := url.Parse(base)
-	if err != nil {
-		writeSiteProxyFailure(w, http.StatusBadGateway, "invalid site api base url", base)
-		return
-	}
-	u.Path = strings.TrimRight(u.Path, "/") + "/api/v1/skills"
-	u.RawQuery = r.URL.RawQuery
-	req, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, u.String(), nil)
-	req.Header.Set("Accept", "application/json")
-	client := newSiteAPIHTTPClient(8 * time.Second)
-	res, err := client.Do(req)
-	if err != nil {
-		writeSiteProxyFailure(w, http.StatusBadGateway, err.Error(), u.String())
-		return
-	}
-	defer res.Body.Close()
-	body, _ := io.ReadAll(res.Body)
-	var skills []map[string]interface{}
-	if err := json.Unmarshal(body, &skills); err != nil {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(res.StatusCode)
-		_, _ = w.Write(body)
-		return
-	}
 	env := func(k string) string { return os.Getenv(k) }
+	var skills []map[string]interface{}
+	base := s.siteAPIBaseURL()
+	if u, err := url.Parse(base); err == nil {
+		u.Path = strings.TrimRight(u.Path, "/") + "/api/v1/skills"
+		u.RawQuery = r.URL.RawQuery
+		req, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, u.String(), nil)
+		req.Header.Set("Accept", "application/json")
+		client := newSiteAPIHTTPClient(siteAPIDefaultTimeout)
+		if res, err := client.Do(req); err == nil && res != nil {
+			body, _ := io.ReadAll(res.Body)
+			res.Body.Close()
+			if res.StatusCode == http.StatusOK {
+				_ = json.Unmarshal(body, &skills)
+			}
+		}
+	}
+	if skills == nil {
+		skills = []map[string]interface{}{}
+	}
 	skills = mergeSkillsListWithLocalManaged(skills, env)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
@@ -669,19 +717,22 @@ func (s *Server) handleSiteSkillDetail(w http.ResponseWriter, r *http.Request) {
 	base := s.siteAPIBaseURL()
 	u, err := url.Parse(base)
 	if err != nil {
-		writeSiteProxyFailure(w, http.StatusBadGateway, "invalid site api base url", base)
+		if tryWriteLocalSkillDetail(w, managedDir, folder) {
+			return
+		}
+		http.NotFound(w, r)
 		return
 	}
 	u.Path = strings.TrimRight(u.Path, "/") + "/api/v1/skills/" + url.PathEscape(folder)
 	req, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, u.String(), nil)
 	req.Header.Set("Accept", "application/json")
-	client := newSiteAPIHTTPClient(8 * time.Second)
+	client := newSiteAPIHTTPClient(siteAPIDefaultTimeout)
 	res, err := client.Do(req)
 	if err != nil {
 		if tryWriteLocalSkillDetail(w, managedDir, folder) {
 			return
 		}
-		writeSiteProxyFailure(w, http.StatusBadGateway, err.Error(), u.String())
+		http.NotFound(w, r)
 		return
 	}
 	defer res.Body.Close()
@@ -690,17 +741,15 @@ func (s *Server) handleSiteSkillDetail(w http.ResponseWriter, r *http.Request) {
 		if tryWriteLocalSkillDetail(w, managedDir, folder) {
 			return
 		}
-		setSiteProxyCORSHeaders(w)
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write(body)
+		http.NotFound(w, r)
 		return
 	}
 	var detail map[string]interface{}
-	if err := json.Unmarshal(body, &detail); err != nil {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(res.StatusCode)
-		_, _ = w.Write(body)
+	if res.StatusCode != http.StatusOK || json.Unmarshal(body, &detail) != nil {
+		if tryWriteLocalSkillDetail(w, managedDir, folder) {
+			return
+		}
+		http.NotFound(w, r)
 		return
 	}
 	skillSet := installmetadata.SkillInstallSet(env)
@@ -722,11 +771,11 @@ func (s *Server) handleSiteSkillDownload(w http.ResponseWriter, r *http.Request)
 		http.NotFound(w, r)
 		return
 	}
-	s.proxySiteGET(w, r, "/api/v1/skills/"+url.PathEscape(folder)+"/download")
+	s.proxySiteGET(w, r, "/api/v1/skills/"+url.PathEscape(folder)+"/download", proxySiteGETDownload)
 }
 
 func (s *Server) handleSiteEduCategories(w http.ResponseWriter, r *http.Request) {
-	s.proxySiteGET(w, r, "/api/v1/edu/categories")
+	s.proxySiteGET(w, r, "/api/v1/edu/categories", proxySiteGETSilentJSONArray)
 }
 
 func (s *Server) handleSiteEduLessonDetail(w http.ResponseWriter, r *http.Request) {
@@ -736,7 +785,7 @@ func (s *Server) handleSiteEduLessonDetail(w http.ResponseWriter, r *http.Reques
 		http.NotFound(w, r)
 		return
 	}
-	s.proxySiteGET(w, r, "/api/v1/edu/lessons/"+url.PathEscape(id))
+	s.proxySiteGET(w, r, "/api/v1/edu/lessons/"+url.PathEscape(id), proxySiteGETSilentJSONObject)
 }
 
 // handleSiteUploads 代理官网的静态资源（如 logo），将 /api/v1/site/uploads/{path...} 转发到 {base}/uploads/{path}
@@ -746,5 +795,5 @@ func (s *Server) handleSiteUploads(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	s.proxySiteGET(w, r, "/uploads/"+path)
+	s.proxySiteGET(w, r, "/uploads/"+path, proxySiteGETNotFound)
 }

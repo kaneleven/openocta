@@ -38,7 +38,7 @@ func NewRuntime(botID, botSecret, wsURL string, cfg channels.BaseRuntimeConfig, 
 	}
 }
 
-// Start 启动长连接客户端。
+// Start 启动企微入站 WebSocket；出站由网关 handlers.deliverAssistantToIM 在整轮流式结束后调用 Send（与飞书/钉钉一致）。
 func (r *Runtime) Start(ctx context.Context) error {
 	if err := r.BaseRuntimeImpl.Start(ctx); err != nil {
 		return err
@@ -191,7 +191,7 @@ func (r *Runtime) Send(msg *channels.RuntimeOutboundMessage) error {
 	return nil
 }
 
-// SendStream 聚合流式片段后一次性发送。
+// SendStream 仅聚合最终输出片段后一次性发送（与 QQ 一致，避免将思考/中间态发到企微）。
 func (r *Runtime) SendStream(chatID string, stream <-chan *channels.RuntimeStreamChunk) error {
 	var buf strings.Builder
 	for chunk := range stream {
@@ -201,12 +201,15 @@ func (r *Runtime) SendStream(chatID string, stream <-chan *channels.RuntimeStrea
 		if chunk.Error != "" {
 			return fmt.Errorf("wework runtime stream error: %s", chunk.Error)
 		}
-		if !chunk.IsThinking {
+		if !chunk.IsThinking && chunk.IsFinal {
 			buf.WriteString(chunk.Content)
 		}
 		if chunk.IsComplete {
 			break
 		}
+	}
+	if buf.Len() == 0 {
+		return nil
 	}
 	return r.Send(&channels.RuntimeOutboundMessage{
 		ChatID:  chatID,

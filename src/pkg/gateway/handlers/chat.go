@@ -6,13 +6,14 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/openocta/openocta/pkg/paths"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/openocta/openocta/pkg/paths"
 
 	"github.com/google/uuid"
 	mcpManager "github.com/openocta/openocta/pkg/acp/mcp"
@@ -76,9 +77,9 @@ type DeliverContext struct {
 	Header        string                 // 卡片 header 标题（如定时任务运行内容）
 }
 
-// broadcastChatFinal broadcasts a final chat message to clients.
-// 若 deliver 非 nil，同时将消息投递到对应 IM 通道，格式为 "| 回复 {agentName}: {userQuery}\n\n{content}"。
-func broadcastChatFinal(ctx *Context, runId string, sessionKey string, message map[string]interface{}, deliver *DeliverContext) {
+// broadcastChatFinal 向 Web/UI 客户端广播一条最终 chat 消息（不写 IM）。
+// 飞书 / 钉钉 / 企微 / QQ 等出站由 deliverAssistantToIM 在适当时机单独调用，避免多段 EventMessageStop 多次推送中间过程。
+func broadcastChatFinal(ctx *Context, runId string, sessionKey string, message map[string]interface{}) {
 	if ctx == nil || ctx.Broadcast == nil {
 		return
 	}
@@ -97,71 +98,131 @@ func broadcastChatFinal(ctx *Context, runId string, sessionKey string, message m
 	if ctx.NodeSendToSession != nil {
 		ctx.NodeSendToSession(sessionKey, "chat", payload)
 	}
-
-	// 投递到 IM 通道（飞书、QQ、企微、钉钉等）
-	if deliver != nil && deliver.Channel != "" && deliver.To != "" && ctx.ChannelManager != nil {
-		content := extractAssistantTextFromMessage(message)
-		if content != "" {
-			formatted := formatChannelReply(deliver.AgentName, deliver.UserQuery, content)
-			rt, ok := ctx.ChannelManager.Get(strings.ToLower(deliver.Channel))
-			if ok && rt != nil {
-				outMsg := &channels.RuntimeOutboundMessage{
-					Channel:   deliver.Channel,
-					ChatID:    deliver.To,
-					Content:   formatted,
-					ReplyToID: deliver.RootMessageID,
-				}
-				if deliver.ChatType != "" {
-					if outMsg.Metadata == nil {
-						outMsg.Metadata = make(map[string]interface{})
-					}
-					outMsg.Metadata["chat_type"] = deliver.ChatType
-				}
-				if deliver.Header != "" {
-					if outMsg.Metadata == nil {
-						outMsg.Metadata = make(map[string]interface{})
-					}
-					outMsg.Metadata["header"] = deliver.Header
-				}
-				if len(deliver.Metadata) > 0 {
-					if outMsg.Metadata == nil {
-						outMsg.Metadata = make(map[string]interface{})
-					}
-					for k, v := range deliver.Metadata {
-						outMsg.Metadata[k] = v
-					}
-				}
-				_ = rt.Send(outMsg)
-			}
-		}
-	}
 }
 
-// extractAssistantTextFromMessage 从 message body 中提取 assistant 文本内容。
-func extractAssistantTextFromMessage(message map[string]interface{}) string {
-	if message == nil {
-		return ""
+// deliverAssistantToIM 将已格式化好的「最终可见」纯文本投递到 IM（与通道 Runtime.Send 对接；钉钉/企微/飞书共用）。
+func deliverAssistantToIM(ctx *Context, deliver *DeliverContext, plainText string) {
+	if ctx == nil || deliver == nil || strings.TrimSpace(plainText) == "" {
+		return
 	}
-	content, ok := message["content"].([]map[string]interface{})
-	if !ok {
-		if c, ok := message["content"].([]interface{}); ok {
-			var parts []string
-			for _, item := range c {
-				if m, ok := item.(map[string]interface{}); ok {
-					if t, ok := m["text"].(string); ok {
-						parts = append(parts, t)
-					}
-				}
-			}
-			return strings.Join(parts, "")
+	if deliver.Channel == "" || deliver.To == "" || ctx.ChannelManager == nil {
+		return
+	}
+	formatted := formatChannelReply(deliver.AgentName, deliver.UserQuery, strings.TrimSpace(plainText))
+	rt, ok := ctx.ChannelManager.Get(strings.ToLower(deliver.Channel))
+	if !ok || rt == nil {
+		return
+	}
+	outMsg := &channels.RuntimeOutboundMessage{
+		Channel:   deliver.Channel,
+		ChatID:    deliver.To,
+		Content:   formatted,
+		ReplyToID: deliver.RootMessageID,
+	}
+	if deliver.ChatType != "" {
+		if outMsg.Metadata == nil {
+			outMsg.Metadata = make(map[string]interface{})
 		}
-		return ""
+		outMsg.Metadata["chat_type"] = deliver.ChatType
 	}
+	if deliver.Header != "" {
+		if outMsg.Metadata == nil {
+			outMsg.Metadata = make(map[string]interface{})
+		}
+		outMsg.Metadata["header"] = deliver.Header
+	}
+	if len(deliver.Metadata) > 0 {
+		if outMsg.Metadata == nil {
+			outMsg.Metadata = make(map[string]interface{})
+		}
+		for k, v := range deliver.Metadata {
+			outMsg.Metadata[k] = v
+		}
+	}
+	_ = rt.Send(outMsg)
+}
+
+// extractAssistantTextFromMessage 从 message body 中提取 assistant 文本内容（完整拼接非工具块文本，供转写等）。
+func extractAssistantTextFromMessage(message map[string]interface{}) string {
+	blocks := assistantMessageContentBlocks(message)
 	var parts []string
-	for _, block := range content {
+	for _, block := range blocks {
+		if isAssistantToolBlock(block) {
+			continue
+		}
 		if t, ok := block["text"].(string); ok {
 			parts = append(parts, t)
 		}
+	}
+	return strings.Join(parts, "")
+}
+
+// assistantMessageContentBlocks 将 message["content"] 规范为块列表。
+func assistantMessageContentBlocks(message map[string]interface{}) []map[string]interface{} {
+	if message == nil {
+		return nil
+	}
+	content, ok := message["content"].([]map[string]interface{})
+	if ok {
+		return content
+	}
+	c, ok := message["content"].([]interface{})
+	if !ok {
+		return nil
+	}
+	out := make([]map[string]interface{}, 0, len(c))
+	for _, item := range c {
+		if m, ok := item.(map[string]interface{}); ok {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+func isAssistantToolBlock(block map[string]interface{}) bool {
+	if block == nil {
+		return false
+	}
+	typ, _ := block["type"].(string)
+	switch strings.ToLower(strings.TrimSpace(typ)) {
+	case "toolcall", "tool_call", "tool_use":
+		return true
+	default:
+		return false
+	}
+}
+
+// extractAssistantTextForIMDelivery 提取「对用户的最终可见回复」：只拼接「最后一个工具块之后」的文本，
+// 用于 IM 投递与 cron 摘要，避免把工具调用前的说明等写入飞书/企微或 cron 结果文件。
+func extractAssistantTextForIMDelivery(message map[string]interface{}) string {
+	blocks := assistantMessageContentBlocks(message)
+	if len(blocks) == 0 {
+		return ""
+	}
+	lastToolIdx := -1
+	for i := range blocks {
+		if isAssistantToolBlock(blocks[i]) {
+			lastToolIdx = i
+		}
+	}
+	var parts []string
+	for i := lastToolIdx + 1; i < len(blocks); i++ {
+		b := blocks[i]
+		if isAssistantToolBlock(b) {
+			continue
+		}
+		t, ok := b["text"].(string)
+		if !ok || strings.TrimSpace(t) == "" {
+			continue
+		}
+		typ, _ := b["type"].(string)
+		if strings.TrimSpace(strings.ToLower(typ)) == "thinking" {
+			continue
+		}
+		if typ != "" && typ != "text" {
+			continue
+		}
+		parts = append(parts, t)
 	}
 	return strings.Join(parts, "")
 }
@@ -1203,12 +1264,17 @@ func ChatSendHandler(opts HandlerOpts) error {
 					if opts != nil && opts.DurationMs != nil {
 						messageBody["durationMs"] = *opts.DurationMs
 					}
-					broadcastChatFinal(ctxForBroadcast, runId, sessionKey, messageBody, deliverForGoroutine)
+					broadcastChatFinal(ctxForBroadcast, runId, sessionKey, messageBody)
+					cronSummary := extractAssistantTextForIMDelivery(messageBody)
+					if cronSummary == "" {
+						cronSummary = output
+					}
+					deliverAssistantToIM(ctxForBroadcast, deliverForGoroutine, cronSummary)
 					if cronSession {
 						runAtMs := runStart.UnixMilli()
 						durationMs := time.Since(runStart).Milliseconds()
-						writeCronSessionResult(sessionKey, sessionID, output, "ok", runAtMs, durationMs)
-						DeliverCronResultIfNeeded(ctxForBroadcast, sessionKey, output, "ok")
+						writeCronSessionResult(sessionKey, sessionID, cronSummary, "ok", runAtMs, durationMs)
+						DeliverCronResultIfNeeded(ctxForBroadcast, sessionKey, cronSummary, "ok")
 					}
 				} else {
 					appendErrorToTranscript(transcriptPath, "模型未返回任何输出", runId, sessionKey, ctxForBroadcast)
@@ -1224,7 +1290,9 @@ func ChatSendHandler(opts HandlerOpts) error {
 			var lastMessageID string
 			var usageSnapshot *api.Usage
 			stopReason := ""
-			lastAssistantContent := "" // last assistant content
+			// 每轮 EventMessageStop 可能对应「工具前说明 / 工具 / 最终回答」之一；只对飞书等 IM 保留「最后一次非空」的可见摘录，流结束再发一条。
+			lastAssistantContent := ""
+			streamIMPlain := ""
 
 			for evt := range eventChan {
 				if ctx.Err() != nil {
@@ -1364,11 +1432,10 @@ func ChatSendHandler(opts HandlerOpts) error {
 							"content":   contentSnapshot,
 							"timestamp": tsMs,
 						}
-						broadcastChatFinal(ctxForBroadcast, runId, sessionKey, messageBody, deliverForGoroutine)
-						// 将最终文本内容写入 cron 会话结果文件（若是 cron 会话）
-						if cronSession {
-							finalText := extractAssistantTextFromMessage(messageBody)
-							lastAssistantContent = finalText
+						broadcastChatFinal(ctxForBroadcast, runId, sessionKey, messageBody)
+						if t := extractAssistantTextForIMDelivery(messageBody); t != "" {
+							streamIMPlain = t
+							lastAssistantContent = t
 						}
 						// Reset accumulators so next EventMessageStop (if any) does not include this turn's content
 						assistantContent = nil
@@ -1376,7 +1443,7 @@ func ChatSendHandler(opts HandlerOpts) error {
 					} else if usageSnapshot != nil {
 						broadcastChatFinal(ctxForBroadcast, runId, sessionKey, map[string]interface{}{
 							"role": "assistant", "content": []map[string]interface{}{}, "timestamp": time.Now().UnixMilli(),
-						}, deliverForGoroutine)
+						})
 					}
 				case api.EventError:
 					outMsg := ""
@@ -1394,8 +1461,11 @@ func ChatSendHandler(opts HandlerOpts) error {
 					return
 				}
 			}
+			// 流式正常结束：只向 IM 发送一条，内容为多次 MessageStop 中最后一次非空的「最终可见」摘录（与钉钉/企微/飞书同一逻辑）。
+			if ctx.Err() == nil {
+				deliverAssistantToIM(ctxForBroadcast, deliverForGoroutine, streamIMPlain)
+			}
 			if cronSession {
-				// 对于流式场景，使用最后一次 assistant 内容作为 summary。
 				durationMs := time.Since(runStart).Milliseconds()
 				runAtMs := runStart.UnixMilli()
 				writeCronSessionResult(sessionKey, sessionID, lastAssistantContent, "ok", runAtMs, durationMs)
@@ -1434,11 +1504,16 @@ func ChatSendHandler(opts HandlerOpts) error {
 						"content":   []map[string]interface{}{{"type": "text", "text": output}},
 						"timestamp": time.Now().UnixMilli(),
 					}
-					broadcastChatFinal(ctxForBroadcast, runId, sessionKey, messageBody, deliverForGoroutine)
+					broadcastChatFinal(ctxForBroadcast, runId, sessionKey, messageBody)
+					cronSummary := extractAssistantTextForIMDelivery(messageBody)
+					if cronSummary == "" {
+						cronSummary = output
+					}
+					deliverAssistantToIM(ctxForBroadcast, deliverForGoroutine, cronSummary)
 					if cronSession {
 						runAtMs := runStart.UnixMilli()
-						writeCronSessionResult(sessionKey, sessionID, output, "ok", runAtMs, durationMs)
-						DeliverCronResultIfNeeded(ctxForBroadcast, sessionKey, output, "ok")
+						writeCronSessionResult(sessionKey, sessionID, cronSummary, "ok", runAtMs, durationMs)
+						DeliverCronResultIfNeeded(ctxForBroadcast, sessionKey, cronSummary, "ok")
 					}
 				}
 			}
@@ -1790,7 +1865,7 @@ func ChatInjectHandler(opts HandlerOpts) error {
 	// Broadcast to webchat clients for immediate UI update
 	runId := fmt.Sprintf("inject-%s", messageID)
 	if opts.Context != nil {
-		broadcastChatFinal(opts.Context, runId, sessionKey, messageBody, nil)
+		broadcastChatFinal(opts.Context, runId, sessionKey, messageBody)
 	}
 
 	opts.Respond(true, map[string]interface{}{

@@ -44,7 +44,7 @@ func NewRuntime(clientID, clientSecret string, cfg channels.BaseRuntimeConfig, s
 	}
 }
 
-// Start 启动 DingTalk Stream Client，接收机器人回调消息。
+// Start 启动钉钉入站 Stream Client；出站回复由网关 handlers.deliverAssistantToIM 调用 Send（整轮流式结束后一条，与飞书/企微一致）。
 func (r *Runtime) Start(ctx context.Context) error {
 	if err := r.BaseRuntimeImpl.Start(ctx); err != nil {
 		return err
@@ -127,7 +127,7 @@ func (r *Runtime) Send(msg *channels.RuntimeOutboundMessage) error {
 	return r.sendDirectReply(sessionWebhook, msg.Content)
 }
 
-// SendStream：DingTalk 不支持真正的流式消息，这里聚合后一次性发送。
+// SendStream：钉钉不支持真正的流式消息，仅聚合最终输出片段后一次性发送（与 QQ 一致）。
 func (r *Runtime) SendStream(chatID string, stream <-chan *channels.RuntimeStreamChunk) error {
 	var buf string
 
@@ -138,7 +138,7 @@ func (r *Runtime) SendStream(chatID string, stream <-chan *channels.RuntimeStrea
 		if chunk.Error != "" {
 			return fmt.Errorf("dingtalk runtime stream error: %s", chunk.Error)
 		}
-		if !chunk.IsThinking && !chunk.IsFinal {
+		if !chunk.IsThinking && chunk.IsFinal {
 			buf += chunk.Content
 		}
 		if chunk.IsComplete {
