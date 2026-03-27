@@ -67,6 +67,9 @@ type Cost struct {
 const (
 	// CurrentSessionVersion matches TS CURRENT_SESSION_VERSION.
 	CurrentSessionVersion = 2
+	// maxTranscriptLineBytes is the max size of one JSONL line. bufio.Scanner defaults to 64KiB;
+	// long assistant/tool lines exceed that and would make ReadTranscriptMessages fail entirely.
+	maxTranscriptLineBytes = 32 << 20
 )
 
 // EnsureTranscriptFile creates a transcript file if it does not exist.
@@ -195,6 +198,8 @@ func ReadTranscriptMessages(transcriptPath string, limit int) ([]TranscriptMessa
 	defer f.Close()
 	var msgs []TranscriptMessage
 	scanner := bufio.NewScanner(f)
+	scanBuf := make([]byte, 0, 256*1024)
+	scanner.Buffer(scanBuf, maxTranscriptLineBytes)
 	first := true
 	for scanner.Scan() {
 		line := scanner.Bytes()

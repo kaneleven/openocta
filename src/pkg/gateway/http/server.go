@@ -22,6 +22,7 @@ import (
 	"github.com/openocta/openocta/pkg/gateway/protocol"
 	"github.com/openocta/openocta/pkg/gateway/ws"
 	initpkg "github.com/openocta/openocta/pkg/init"
+	"github.com/openocta/openocta/pkg/logging"
 	"github.com/openocta/openocta/pkg/outbound"
 	"github.com/openocta/openocta/pkg/paths"
 	"github.com/stellarlinkco/agentsdk-go/pkg/middleware"
@@ -116,13 +117,11 @@ func NewServer(addr string, version string) *Server {
 	chReg := channels.NewRegistry()
 	chRuntimeMgr := channels.NewManager()
 	outReg := outbound.NewAdapterRegistry()
-	if !skipChannels {
-		// 注册所有内置 Channel 插件，同时为每个通道注册一个 StubAdapter。
-		// 出站发送统一走 RuntimeChannel 机制，OutboundAdapter 仅作为占位/未来扩展保留。
-		builtin.Register(chReg)
-		for _, p := range chReg.List() {
-			outReg.Register(p.ID(), &outbound.StubAdapter{ChannelID: p.ID()})
-		}
+	// 始终注册内置 Channel 插件，保证 channels.status / 配置 UI 能反映各通道是否已配置。
+	// 桌面模式仍可通过 skipChannels 跳过 Runtime 连接（registerChannelRuntimesFromConfig / Start），避免后台长连接导致不稳定。
+	builtin.Register(chReg)
+	for _, p := range chReg.List() {
+		outReg.Register(p.ID(), &outbound.StubAdapter{ChannelID: p.ID()})
 	}
 	hub := ws.NewHub(version, nil, nil) // Create hub first to get broadcast functions
 
@@ -620,7 +619,11 @@ func registerChannelRuntimesFromConfig(
 	sink channels.InboundSink,
 	skipChannels bool,
 ) {
-	if skipChannels || cfg == nil || cfg.Channels == nil {
+	if skipChannels {
+		logging.Info("gateway: channel runtimes skipped (OPENOCTA_SKIP_CHANNELS or OPENOCTA_SKIP_PROVIDERS set)")
+		return
+	}
+	if cfg == nil || cfg.Channels == nil {
 		return
 	}
 

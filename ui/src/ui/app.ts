@@ -80,7 +80,13 @@ import {
 } from "./app-tool-stream.ts";
 import { resolveInjectedAssistantIdentity } from "./assistant-identity.ts";
 import { loadAssistantIdentity as loadAssistantIdentityInternal } from "./controllers/assistant-identity.ts";
+import {
+  registerNativeDialogInvoker,
+  unregisterNativeDialogInvoker,
+  type NativeDialogInvoker,
+} from "./native-dialog-bridge.ts";
 import { loadSettings, type UiSettings } from "./storage.ts";
+import type { NativeDialogModel } from "./views/native-dialog-overlay.ts";
 import { type ChatAttachment, type ChatQueueItem, type CronFormState } from "./ui-types.ts";
 
 declare global {
@@ -105,7 +111,7 @@ function resolveOnboardingMode(): boolean {
 }
 
 @customElement("openclaw-app")
-export class OpenClawApp extends LitElement {
+export class OpenClawApp extends LitElement implements NativeDialogInvoker {
   @state() settings: UiSettings = loadSettings();
   @state() password = "";
   @state() tab: Tab = "message";
@@ -201,9 +207,14 @@ export class OpenClawApp extends LitElement {
   @state() weworkQrModalReplaceWarn = false;
   @state() weworkQrModalAuthUrl: string | null = null;
   @state() weworkQrModalGenPageUrl: string | null = null;
+  @state() nativeDialog: NativeDialogModel = null;
+  @state() nativePromptInput = "";
   /** Browser interval id for WeCom QR polling (not reactive) */
   weworkQrPollTimer: number | null = null;
   weworkQrSuccessCloseTimer: number | null = null;
+  private nativeResolveConfirm: ((ok: boolean) => void) | null = null;
+  private nativeResolveAlert: (() => void) | null = null;
+  private nativeResolvePrompt: ((v: string | null) => void) | null = null;
   @state() nostrProfileFormState: NostrProfileFormState | null = null;
   @state() nostrProfileAccountId: string | null = null;
   @state() channelsSelectedChannelId: string | null = null;
@@ -532,6 +543,14 @@ export class OpenClawApp extends LitElement {
     if (ev.key !== "Escape") {
       return;
     }
+    if (this.nativeDialog) {
+      if (this.nativeDialog.kind === "alert") {
+        this.handleNativeDialogConfirm();
+      } else {
+        this.handleNativeDialogCancel();
+      }
+      return;
+    }
     if (this.sessionOverflow) {
       this.sessionOverflow = null;
     }
@@ -543,6 +562,7 @@ export class OpenClawApp extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    registerNativeDialogInvoker(this);
     document.addEventListener("keydown", this.sessionOverflowEscapeHandler);
     handleConnected(this as unknown as Parameters<typeof handleConnected>[0]);
   }
@@ -552,6 +572,7 @@ export class OpenClawApp extends LitElement {
   }
 
   disconnectedCallback() {
+    unregisterNativeDialogInvoker(this);
     document.removeEventListener("keydown", this.sessionOverflowEscapeHandler);
     handleDisconnected(this as unknown as Parameters<typeof handleDisconnected>[0]);
     super.disconnectedCallback();
@@ -769,6 +790,68 @@ export class OpenClawApp extends LitElement {
     const newRatio = Math.max(0.4, Math.min(0.7, ratio));
     this.splitRatio = newRatio;
     this.applySettings({ ...this.settings, splitRatio: newRatio });
+  }
+
+  showConfirm(message: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      this.nativeResolveConfirm = resolve;
+      this.nativeDialog = { kind: "confirm", message };
+    });
+  }
+
+  showAlert(message: string): Promise<void> {
+    return new Promise((resolve) => {
+      this.nativeResolveAlert = resolve;
+      this.nativeDialog = { kind: "alert", message };
+    });
+  }
+
+  showPrompt(message: string, defaultValue = ""): Promise<string | null> {
+    return new Promise((resolve) => {
+      this.nativePromptInput = defaultValue;
+      this.nativeResolvePrompt = resolve;
+      this.nativeDialog = { kind: "prompt", message, defaultValue };
+    });
+  }
+
+  handleNativeDialogConfirm() {
+    const d = this.nativeDialog;
+    if (!d) {
+      return;
+    }
+    if (d.kind === "alert") {
+      this.nativeResolveAlert?.();
+    } else if (d.kind === "confirm") {
+      this.nativeResolveConfirm?.(true);
+    } else {
+      this.nativeResolvePrompt?.(this.nativePromptInput);
+    }
+    this.clearNativeDialogState();
+  }
+
+  handleNativeDialogCancel() {
+    const d = this.nativeDialog;
+    if (!d) {
+      return;
+    }
+    if (d.kind === "confirm") {
+      this.nativeResolveConfirm?.(false);
+    } else if (d.kind === "prompt") {
+      this.nativeResolvePrompt?.(null);
+    }
+    this.clearNativeDialogState();
+  }
+
+  handleNativePromptInput(value: string) {
+    this.nativePromptInput = value;
+  }
+
+  private clearNativeDialogState() {
+    this.nativeDialog = null;
+    this.nativePromptInput = "";
+    this.nativeResolveConfirm = null;
+    this.nativeResolveAlert = null;
+    this.nativeResolvePrompt = null;
   }
 
   render() {

@@ -194,6 +194,13 @@ func (b *BaseRuntimeImpl) IsRunning() bool {
 	return b.running
 }
 
+// Enabled 返回配置中是否开启该通道。
+func (b *BaseRuntimeImpl) Enabled() bool {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.config.Enabled
+}
+
 // RuntimeStatus 实现 RuntimeStatusProvider，返回运行时的状态信息。
 func (b *BaseRuntimeImpl) RuntimeStatus() RuntimeStatus {
 	b.mu.RLock()

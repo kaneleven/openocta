@@ -1,4 +1,5 @@
 import { html, nothing } from "lit";
+import { nativeConfirm } from "../native-dialog-bridge.ts";
 import { t } from "../strings.js";
 import type { SandboxConfigForm } from "../controllers/sandbox.ts";
 import type { ApprovalEntry, ApprovalsListResult } from "../controllers/approvals.ts";
@@ -442,8 +443,8 @@ export function renderSandbox(props: SandboxProps) {
                                     <button class="btn btn--sm" @click=${() => props.onDeny(e.id)}>${t("approvalsDeny")}</button>
                                     <button
                                       class="btn btn--sm btn-ok"
-                                      @click=${() => {
-                                        const confirmed = window.confirm(
+                                      @click=${async () => {
+                                        const confirmed = await nativeConfirm(
                                           `全部放行后该 sessionId (${e.sessionId}) 对应的会话执行的所有命令将默认通过，不再进入审批队列。确定要全部放行吗？`,
                                         );
                                         if (confirmed) {

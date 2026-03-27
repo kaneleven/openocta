@@ -1156,6 +1156,21 @@
   animation: slide-in-right 0.2s ease-out;
 }
 
+/* 居中弹框：应用内确认/提示、企业微信扫码等（频道「配置」表单使用右侧滑出面板） */
+.channel-panel-overlay.channel-panel-overlay--centered {
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+.channel-panel-overlay.channel-panel-overlay--centered .channel-panel {
+  width: min(420px, 100%);
+  max-height: min(90vh, 100vh);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  animation: scale-in 0.2s var(--ease-out);
+}
+
 @keyframes slide-in-right {
   from {
     transform: translateX(100%);

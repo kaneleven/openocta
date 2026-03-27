@@ -1,4 +1,5 @@
 import type { GatewayBrowserClient } from "../gateway.ts";
+import { nativeConfirm } from "../native-dialog-bridge.ts";
 import type { SessionsListResult } from "../types.ts";
 import { toNumber } from "../format.ts";
 
@@ -173,7 +174,7 @@ export async function deleteSession(state: SessionsState, key: string) {
   if (state.sessionsLoading) {
     return;
   }
-  const confirmed = window.confirm(
+  const confirmed = await nativeConfirm(
     `Delete session "${key}"?\n\nDeletes the session entry and archives its transcript.`,
   );
   if (!confirmed) {
@@ -209,7 +210,7 @@ export async function deleteSessions(state: SessionsState, keys: string[]) {
     safeKeys.length === 1
       ? `Delete session "${safeKeys[0]}"?`
       : `Delete ${safeKeys.length} sessions?\n\nFirst: "${safeKeys[0]}"`;
-  const confirmed = window.confirm(
+  const confirmed = await nativeConfirm(
     `${label}\n\nDeletes the session entries and archives their transcripts.`,
   );
   if (!confirmed) {

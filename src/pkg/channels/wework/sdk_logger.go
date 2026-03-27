@@ -1,39 +1,18 @@
 package wework
 
-import (
-	"github.com/go-sphere/wecom-aibot-go-sdk/aibot"
-	"github.com/openocta/openocta/pkg/logging"
-)
+import "github.com/go-sphere/wecom-aibot-go-sdk/aibot"
 
-// sdkLogger adapts openocta logging to the wecom aibot SDK Logger interface.
-type sdkLogger struct {
-	inner *logging.GlobalLogger
+// sdkLogger satisfies aibot.Logger without emitting application logs.
+type sdkLogger struct{}
+
+func newSDKLogger(_ string) aibot.Logger {
+	return &sdkLogger{}
 }
 
-func newSDKLogger(name string) aibot.Logger {
-	return &sdkLogger{inner: logging.Sub(name)}
-}
+func (s *sdkLogger) Debug(_ string, _ ...interface{}) {}
 
-func (s *sdkLogger) Debug(format string, v ...interface{}) {
-	if s.inner != nil {
-		s.inner.Debug(format, v...)
-	}
-}
+func (s *sdkLogger) Info(_ string, _ ...interface{}) {}
 
-func (s *sdkLogger) Info(format string, v ...interface{}) {
-	if s.inner != nil {
-		s.inner.Info(format, v...)
-	}
-}
+func (s *sdkLogger) Warn(_ string, _ ...interface{}) {}
 
-func (s *sdkLogger) Warn(format string, v ...interface{}) {
-	if s.inner != nil {
-		s.inner.Warn(format, v...)
-	}
-}
-
-func (s *sdkLogger) Error(format string, v ...interface{}) {
-	if s.inner != nil {
-		s.inner.Error(format, v...)
-	}
-}
+func (s *sdkLogger) Error(_ string, _ ...interface{}) {}

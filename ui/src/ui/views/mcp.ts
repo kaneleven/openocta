@@ -1,4 +1,5 @@
 import { html, nothing, type TemplateResult } from "lit";
+import { nativeConfirm } from "../native-dialog-bridge.ts";
 import { t } from "../strings.js";
 
 export type McpServerEntry = {
@@ -654,9 +655,9 @@ export function renderMcp(props: McpProps) {
                               class="btn btn--sm"
                               style="color: var(--danger-color, #d14343);"
                               ?disabled=${props.saving}
-                              @click=${(e: Event) => {
+                              @click=${async (e: Event) => {
                                 e.stopPropagation();
-                                if (confirm(t("mcpDeleteConfirm"))) {
+                                if (await nativeConfirm(t("mcpDeleteConfirm"))) {
                                   props.onDelete(key);
                                 }
                               }}
@@ -715,9 +716,9 @@ export function renderMcp(props: McpProps) {
                               class="btn btn--sm"
                               style="color: var(--danger-color, #d14343); padding: 4px 8px;"
                               ?disabled=${props.saving}
-                              @click=${(e: Event) => {
+                              @click=${async (e: Event) => {
                                 e.stopPropagation();
-                                if (confirm(t("mcpDeleteConfirm"))) {
+                                if (await nativeConfirm(t("mcpDeleteConfirm"))) {
                                   props.onDelete(key);
                                 }
                               }}

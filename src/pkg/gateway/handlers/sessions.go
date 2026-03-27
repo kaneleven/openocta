@@ -1277,12 +1277,25 @@ func ResolveChatSessionID(params map[string]interface{}, ctx *Context) (sessionI
 	cfg := loadConfigFromContext(ctx)
 	target := resolveGatewaySessionStoreTarget(cfg, key, env)
 	entry, found := loadSessionEntryFromStore(target.storePath, key, target.storeKeys)
-	if found && entry.SessionID != "" {
-		validated, err := session.ValidateSessionID(entry.SessionID)
-		if err != nil {
-			return "", "", "", err
+	if found {
+		sid := strings.TrimSpace(entry.SessionID)
+		// Some entries only persist sessionFile (e.g. employee keys) while sessionId is empty.
+		// Fall back to the basename so transcript resolution matches the UUID file on disk.
+		if sid == "" && entry.SessionFile != "" {
+			base := strings.TrimSuffix(filepath.Base(entry.SessionFile), ".jsonl")
+			if base != "" {
+				if validated, vErr := session.ValidateSessionID(base); vErr == nil {
+					sid = validated
+				}
+			}
 		}
-		return validated, entry.SessionFile, target.storePath, nil
+		if sid != "" {
+			validated, err := session.ValidateSessionID(sid)
+			if err != nil {
+				return "", "", "", err
+			}
+			return validated, entry.SessionFile, target.storePath, nil
+		}
 	}
 	fallbackID := tools.SessionIDFromSessionKey(sessionKey)
 	validated, err := session.ValidateSessionID(fallbackID)

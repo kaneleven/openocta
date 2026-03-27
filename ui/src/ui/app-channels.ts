@@ -14,6 +14,11 @@ import {
   type ConfigState,
 } from "./controllers/config.ts";
 import { cloneConfigObject } from "./controllers/config/form-utils.ts";
+import {
+  alertChannelRuntimeErrorsIfAny,
+  probeChannelRuntimeErrors,
+} from "./controllers/channel-runtime-errors.ts";
+import { nativeConfirm } from "./native-dialog-bridge.ts";
 import { t } from "./strings.js";
 import { createNostrProfileFormState } from "./views/channels.nostr-profile-form.ts";
 
@@ -104,6 +109,13 @@ async function pollWeWorkQrOnce(host: OpenClawApp, scode: string) {
         return;
       }
 
+      const runtimeIssues = await probeChannelRuntimeErrors(host, ["wework"]);
+      if (runtimeIssues.length) {
+        host.weworkQrModalError = runtimeIssues.map((x) => `${x.label}: ${x.message}`).join("\n");
+        host.weworkQrModalPolling = false;
+        return;
+      }
+
       host.weworkQrModalPolling = false;
       host.weworkQrModalSuccess = true;
       host.weworkQrModalAuthUrl = null;
@@ -185,7 +197,7 @@ export async function handleWhatsAppLogout(host: OpenClawApp) {
 export async function handleChannelConfigSave(host: OpenClawApp) {
   const channels = host.configForm?.channels;
   const isChannelsPatch = channels != null && typeof channels === "object";
-  if (isChannelsPatch && !window.confirm(t("channelsConfigSaveConfirm"))) {
+  if (isChannelsPatch && !(await nativeConfirm(t("channelsConfigSaveConfirm")))) {
     return;
   }
   if (isChannelsPatch) {
@@ -195,6 +207,12 @@ export async function handleChannelConfigSave(host: OpenClawApp) {
   }
   await loadConfig(host);
   await loadChannels(host, true);
+  if (!host.lastError) {
+    const ch = host.configForm?.channels as Record<string, unknown> | undefined;
+    const sel = host.channelsSelectedChannelId?.trim().toLowerCase() || "";
+    const scope = isChannelsPatch && sel ? { onlyChannelIds: [sel] } : undefined;
+    await alertChannelRuntimeErrorsIfAny(host, ch, scope);
+  }
 }
 
 export async function handleChannelConfigReload(host: OpenClawApp) {

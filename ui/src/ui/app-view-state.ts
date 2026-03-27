@@ -33,6 +33,7 @@ import type {
 } from "./types.ts";
 import type { ChatAttachment, ChatQueueItem, CronFormState } from "./ui-types.ts";
 import type { NostrProfileFormState } from "./views/channels.nostr-profile-form.ts";
+import type { NativeDialogModel } from "./views/native-dialog-overlay.ts";
 import type { SessionLogEntry } from "./views/usage.ts";
 
 export type AppViewState = {
@@ -125,6 +126,8 @@ export type AppViewState = {
   weworkQrModalReplaceWarn: boolean;
   weworkQrModalAuthUrl: string | null;
   weworkQrModalGenPageUrl: string | null;
+  nativeDialog: NativeDialogModel;
+  nativePromptInput: string;
   nostrProfileFormState: NostrProfileFormState | null;
   nostrProfileAccountId: string | null;
   configFormDirty: boolean;
@@ -465,4 +468,7 @@ export type AppViewState = {
   handleOpenSidebar: (content: string) => void;
   handleCloseSidebar: () => void;
   handleSplitRatioChange: (ratio: number) => void;
+  handleNativePromptInput: (value: string) => void;
+  handleNativeDialogConfirm: () => void;
+  handleNativeDialogCancel: () => void;
 };

@@ -314,11 +314,15 @@ type Strings = {
   channelsSchemaUnavailable: string;
   channelsConfigSchemaUnavailable: string;
   channelsConfigSaveConfirm: string;
+  /** 渠道已启用但网关侧运行时启动/连接失败时，弹窗标题 */
+  channelsRuntimeStartErrorTitle: string;
   channelsLoadingConfigSchema: string;
   commonSave: string;
   commonCreate: string;
   commonReload: string;
   commonCancel: string;
+  /** 应用内对话框主按钮（替代 window.alert/confirm 桌面不可用场景） */
+  nativeDialogOK: string;
   channelConfigured: string;
   channelRunning: string;
   channelLastStart: string;
@@ -1273,11 +1277,13 @@ const EN: Strings = {
   channelsSchemaUnavailable: "Schema unavailable. Use Raw.",
   channelsConfigSchemaUnavailable: "Channel config schema unavailable.",
   channelsConfigSaveConfirm: "Saving channel config will interrupt and recreate long-lived connections. Continue?",
+  channelsRuntimeStartErrorTitle: "The channel is enabled but failed to run. Details:",
   channelsLoadingConfigSchema: "Loading config schema…",
   commonSave: "Save",
   commonCreate: "Create",
   commonReload: "Reload",
   commonCancel: "Cancel",
+  nativeDialogOK: "OK",
   channelConfigured: "Configured",
   channelRunning: "Running",
   channelLastStart: "Last start",
@@ -2002,7 +2008,7 @@ const ZH: Strings = {
   overviewUptime: "运行时长",
   overviewTickInterval: "心跳间隔",
   overviewLastChannelsRefresh: "最近通道刷新",
-  overviewChannelsHint: "在通道中关联 WhatsApp、Telegram、Discord、Signal 或 iMessage。",
+  overviewChannelsHint: "",
   overviewInstances: "实例",
   overviewInstancesSub: "过去 5 分钟内的在线实例数。",
   overviewSessions: "会话",
@@ -2228,11 +2234,13 @@ const ZH: Strings = {
   channelsSchemaUnavailable: "Schema 不可用，请使用 Raw。",
   channelsConfigSchemaUnavailable: "通道配置 Schema 不可用。",
   channelsConfigSaveConfirm: "修改/新增渠道配置会导致长连接中断并重新创建，是否继续？",
+  channelsRuntimeStartErrorTitle: "渠道已启用，但后台运行时启动或连接失败：",
   channelsLoadingConfigSchema: "正在加载配置 Schema…",
   commonSave: "保存",
   commonCreate: "创建",
   commonReload: "重新加载",
   commonCancel: "取消",
+  nativeDialogOK: "确定",
   channelConfigured: "已配置",
   channelRunning: "运行中",
   channelLastStart: "最近启动",

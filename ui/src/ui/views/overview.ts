@@ -24,11 +24,14 @@ export type OverviewProps = {
 };
 
 export function renderOverview(props: OverviewProps) {
-  const snapshot = props.hello?.snapshot as
-    | { uptimeMs?: number; policy?: { tickIntervalMs?: number } }
-    | undefined;
-  const uptime = snapshot?.uptimeMs ? formatDurationMs(snapshot.uptimeMs) : "n/a";
-  const tick = snapshot?.policy?.tickIntervalMs ? `${snapshot.policy.tickIntervalMs}ms` : "n/a";
+  const snapshot = props.hello?.snapshot as { uptimeMs?: number } | undefined;
+  // uptimeMs lives on snapshot; tickIntervalMs is on hello-ok root policy (not snapshot.policy).
+  const uptime = formatDurationMs(snapshot?.uptimeMs);
+  const tickMs = props.hello?.policy?.tickIntervalMs;
+  const tick =
+    typeof tickMs === "number" && Number.isFinite(tickMs) && tickMs > 0
+      ? formatDurationMs(tickMs)
+      : "n/a";
   const authHint = (() => {
     if (props.connected || !props.lastError) {
       return null;

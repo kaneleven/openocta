@@ -31,9 +31,9 @@ func StartGateway() (*gatewayhttp.Server, error) {
 	// Ensure desktop mode and port
 	os.Setenv("OPENOCTA_RUN_MODE", "desktop")
 	os.Setenv("OPENOCTA_GATEWAY_PORT", fmt.Sprintf("%d", DesktopPort))
-	// 桌面模式跳过 Channels/Cron，减少网络连接和后台任务导致的闪退
-	os.Setenv("OPENOCTA_SKIP_CHANNELS", "1")
-	os.Setenv("OPENOCTA_SKIP_CRON", "1")
+	// 桌面模式跳过 Cron，减少后台定时任务带来的不稳定。
+	// Channels（含企业微信 WebSocket）不再默认跳过，以便 App 内可用；若需关闭可手动设置 OPENOCTA_SKIP_CHANNELS=1。
+	//os.Setenv("OPENOCTA_SKIP_CRON", "1")
 
 	// Resolve state dir (used by config, gateway, and logs)
 	stateDir := paths.ResolveStateDir(env)

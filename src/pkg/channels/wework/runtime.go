@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-sphere/wecom-aibot-go-sdk/aibot"
 	"github.com/openocta/openocta/pkg/channels"
-	"github.com/openocta/openocta/pkg/logging"
 )
 
 // Runtime 使用企业微信智能机器人 WebSocket 长连接（aibot SDK）收发消息。
@@ -26,7 +25,6 @@ type Runtime struct {
 	client        *aibot.WSClient
 	authenticated bool
 	lastInboundMs int64
-	logger        *logging.GlobalLogger
 }
 
 // NewRuntime 使用 BotID + Secret 创建企业微信智能机器人运行时。
@@ -37,7 +35,6 @@ func NewRuntime(botID, botSecret, wsURL string, cfg channels.BaseRuntimeConfig, 
 		botID:           strings.TrimSpace(botID),
 		botSecret:       strings.TrimSpace(botSecret),
 		wsURL:           strings.TrimSpace(wsURL),
-		logger:          logging.Sub("wework-runtime"),
 	}
 }
 
@@ -76,9 +73,6 @@ func (r *Runtime) runClient(ctx context.Context) {
 		r.mu.Unlock()
 		r.SetLastError(nil)
 		r.BaseRuntimeImpl.MarkConnectionRestored()
-		if r.logger != nil {
-			r.logger.Info("[wework-runtime] aibot websocket authenticated")
-		}
 	})
 
 	client.OnDisconnected(func(reason string) {
@@ -88,11 +82,7 @@ func (r *Runtime) runClient(ctx context.Context) {
 		r.BaseRuntimeImpl.MarkConnectionFailed(fmt.Errorf("wework ws disconnected: %s", reason))
 	})
 
-	client.OnError(func(err error) {
-		if err != nil && r.logger != nil {
-			r.logger.Warn("[wework-runtime] aibot error: %v", err)
-		}
-	})
+	client.OnError(func(_ error) {})
 
 	client.OnMessageText(func(frame *aibot.WsFrame) {
 		var msg aibot.TextMessage
@@ -197,9 +187,6 @@ func (r *Runtime) Send(msg *channels.RuntimeOutboundMessage) error {
 	_, err := cl.SendMarkdown(chatID, msg.Content)
 	if err != nil {
 		return fmt.Errorf("wework runtime: send markdown: %w", err)
-	}
-	if r.logger != nil {
-		r.logger.Info("[wework-runtime] sent markdown, chat_id=%s, len=%d", chatID, len(msg.Content))
 	}
 	return nil
 }

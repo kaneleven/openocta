@@ -52,6 +52,7 @@ import {
 import { loadUsage, loadSessionTimeSeries, loadSessionLogs } from "./controllers/usage.ts";
 import { icons } from "./icons.ts";
 import { normalizeBasePath, getTabGroups, iconForTab, pathForTab, subtitleForTab, titleForTab } from "./navigation.ts";
+import { nativeAlert, nativeConfirm, nativePrompt } from "./native-dialog-bridge.ts";
 import { t } from "./strings.js";
 
 /** 从 session key 提取数字员工 ID，如 agent:main:employee:xxx:run:uuid -> xxx */
@@ -253,9 +254,9 @@ function renderSessionOverflowFlyout(state: AppViewState, basePath: string) {
           const url = shareUrlForKey();
           try {
             await navigator.clipboard.writeText(url);
-            window.alert("会话链接已复制到剪贴板");
+            await nativeAlert("会话链接已复制到剪贴板");
           } catch {
-            window.prompt("无法自动复制，请手动复制链接：", url);
+            await nativePrompt("无法自动复制，请手动复制链接：", url);
           }
         }}
       >
@@ -320,6 +321,7 @@ import { installFromSite } from "./controllers/remote-market.ts";
 import { computeEmployeeMarketCategories, renderEmployeeMarket } from "./views/employee-market.ts";
 import { renderExecApprovalPrompt } from "./views/exec-approval.ts";
 import { renderGatewayUrlConfirmation } from "./views/gateway-url-confirmation.ts";
+import { renderNativeDialogOverlay } from "./views/native-dialog-overlay.ts";
 import { renderLogs } from "./views/logs.ts";
 import { renderNodes } from "./views/nodes.ts";
 import { renderOverview } from "./views/overview.ts";
@@ -2353,7 +2355,7 @@ export function renderApp(state: AppViewState) {
                 clearWorkspaceLoading: state.aboutClearWorkspaceLoading,
                 clearWorkspaceError: state.aboutClearWorkspaceError,
                 onClearWorkspace: async () => {
-                  const ok = window.confirm(
+                  const ok = await nativeConfirm(
                     "将删除本机默认工作区目录内的全部内容（macOS / Linux 一般为 ~/.openocta/workspace，Windows 一般为 %APPDATA%\\openocta\\workspace）。\n\n此操作不可恢复，请先备份重要文稿。是否继续？",
                   );
                   if (!ok) return;
@@ -2373,7 +2375,7 @@ export function renderApp(state: AppViewState) {
                       state.aboutClearWorkspaceError = [r.message, r.detail].filter(Boolean).join(" — ");
                       return;
                     }
-                    window.alert(r.message ?? "已清空默认工作区。");
+                    await nativeAlert(r.message ?? "已清空默认工作区。");
                   } catch (e) {
                     state.aboutClearWorkspaceError = e instanceof Error ? e.message : String(e);
                   } finally {
@@ -2416,7 +2418,7 @@ export function renderApp(state: AppViewState) {
                       return;
                     }
                     state.aboutUninstallModalOpen = false;
-                    window.alert(r.message ?? "已安排卸载，桌面应用将自动退出。");
+                    await nativeAlert(r.message ?? "已安排卸载，桌面应用将自动退出。");
                     try {
                       window.close();
                     } catch {
@@ -3523,6 +3525,13 @@ export function renderApp(state: AppViewState) {
           : nothing
       }
     </div>
+    ${renderNativeDialogOverlay({
+      model: state.nativeDialog,
+      promptValue: state.nativePromptInput,
+      onPromptInput: (v) => state.handleNativePromptInput(v),
+      onConfirm: () => state.handleNativeDialogConfirm(),
+      onCancel: () => state.handleNativeDialogCancel(),
+    })}
     ${renderSessionOverflowFlyout(state, basePath)}
   `;
 }

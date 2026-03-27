@@ -3,6 +3,7 @@ import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import type { SkillMessageMap } from "../controllers/skills.ts";
 import type { SkillStatusEntry, SkillStatusReport } from "../types.ts";
 import { clampText } from "../format.ts";
+import { nativeConfirm } from "../native-dialog-bridge.ts";
 import { t } from "../strings.js";
 import { toSanitizedMarkdownHtml } from "../markdown.ts";
 
@@ -365,9 +366,9 @@ function renderSkillListRow(skill: SkillStatusEntry, props: SkillsProps) {
                   class="btn btn--sm"
                   style="color: var(--danger-color, #d14343);"
                   ?disabled=${busy}
-                  @click=${(e: Event) => {
+                  @click=${async (e: Event) => {
                     e.stopPropagation();
-                    if (confirm(t("skillsDeleteConfirm"))) props.onDelete(skill.skillKey);
+                    if (await nativeConfirm(t("skillsDeleteConfirm"))) props.onDelete(skill.skillKey);
                   }}
                 >
                   ${t("skillsDelete")}
@@ -442,9 +443,9 @@ function renderSkillCard(skill: SkillStatusEntry, props: SkillsProps) {
                   class="btn btn--sm"
                   style="color: var(--danger-color, #d14343); padding: 4px 8px;"
                   ?disabled=${busy}
-                  @click=${(e: Event) => {
+                  @click=${async (e: Event) => {
                     e.stopPropagation();
-                    if (confirm(t("skillsDeleteConfirm"))) props.onDelete(skill.skillKey);
+                    if (await nativeConfirm(t("skillsDeleteConfirm"))) props.onDelete(skill.skillKey);
                   }}
                   title=${t("skillsDelete")}
                 >
@@ -568,9 +569,9 @@ function renderSkill(skill: SkillStatusEntry, props: SkillsProps) {
                     class="btn"
                     style="color: var(--danger-color, #d14343);"
                     ?disabled=${busy}
-                    @click=${(e: Event) => {
+                    @click=${async (e: Event) => {
                       e.stopPropagation();
-                      if (confirm(t("skillsDeleteConfirm"))) {
+                      if (await nativeConfirm(t("skillsDeleteConfirm"))) {
                         props.onDelete(skill.skillKey);
                       }
                     }}

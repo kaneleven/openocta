@@ -630,7 +630,7 @@ func ChatHistoryHandler(opts HandlerOpts) error {
 		limit = 200
 	}
 
-	sessionID, _, _, err := ResolveChatSessionID(opts.Params, opts.Context)
+	sessionID, sessionFile, storePath, err := ResolveChatSessionID(opts.Params, opts.Context)
 	if err != nil {
 		opts.Respond(false, nil, &protocol.ErrorShape{
 			Code:    protocol.ErrCodeInvalidRequest,
@@ -640,9 +640,33 @@ func ChatHistoryHandler(opts HandlerOpts) error {
 	}
 
 	env := func(k string) string { return os.Getenv(k) }
-	transcriptPath := session.ResolveSessionFilePath(sessionID, nil, env)
+	cfg := loadConfigFromContext(opts.Context)
+	resolveKey := sessionKey
+	if resolveKey == "" {
+		resolveKey = "main"
+	}
+	target := resolveGatewaySessionStoreTarget(cfg, resolveKey, env)
+	transcriptPath := resolveSessionTranscriptPath(sessionID, storePath, sessionFile, target.agentID, env)
 	// Read all messages (limit 0), then take last N to match TS behavior
 	msgs, err := session.ReadTranscriptMessages(transcriptPath, 0)
+	if err != nil {
+		for _, alt := range resolveSessionTranscriptCandidates(sessionID, storePath, sessionFile, target.agentID, env) {
+			if alt == transcriptPath {
+				continue
+			}
+			if m2, e2 := session.ReadTranscriptMessages(alt, 0); e2 == nil {
+				msgs, err = m2, nil
+				transcriptPath = alt
+				break
+			}
+		}
+	}
+	// ReadTranscriptMessages may return a non-nil error after the first oversize line (legacy 64KiB scanner limit)
+	// while still holding messages parsed so far. Do not drop those — empty UI history is worse than truncated.
+	if err != nil && len(msgs) > 0 {
+		chatLog.Warn("chat.history: transcript read incomplete path=%s err=%v keptMessages=%d", transcriptPath, err, len(msgs))
+		err = nil
+	}
 	if err != nil {
 		opts.Respond(true, map[string]interface{}{
 			"sessionKey": sessionKey,
@@ -677,8 +701,6 @@ func ChatHistoryHandler(opts HandlerOpts) error {
 	thinkingLevel := "medium"
 	verboseLevel := "normal"
 	if key := sessionKey; key != "" {
-		cfg := loadConfigFromContext(opts.Context)
-		target := resolveGatewaySessionStoreTarget(cfg, key, env)
 		store, err := session.LoadSessionStore(target.storePath)
 		if err == nil {
 			for _, k := range target.storeKeys {

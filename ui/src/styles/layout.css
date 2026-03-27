@@ -443,12 +443,23 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.brand-logo {
+  flex: 0 0 auto;
+  line-height: 0;
+  max-width: 160px;
 }
 
 .brand-logo img {
-  width: 100%;
-  height: 100%;
+  display: block;
+  height: 44px;
+  width: auto;
+  max-width: 160px;
   object-fit: contain;
+  object-position: left center;
 }
 
 .brand-text {
@@ -1618,8 +1629,10 @@ button.nav-item {
 .topbar-left {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
+  justify-content: flex-start;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 .top-tabs {
@@ -1674,12 +1687,6 @@ button.nav-item {
   height: 2px;
   margin-left: -16px;
   background: var(--text-primary);
-}
-
-.brand-logo {
-  width: auto;
-  height: 40px;
-  flex-shrink: 0;
 }
 
 .brand-title {

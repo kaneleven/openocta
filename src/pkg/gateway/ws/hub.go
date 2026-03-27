@@ -60,6 +60,7 @@ type Hub struct {
 	context    *handlers.Context
 	mu         sync.RWMutex // Protects clients map
 	seq        int64        // Event sequence counter
+	startedAt  time.Time    // process uptime for hello-ok snapshot
 }
 
 const (
@@ -115,6 +116,7 @@ func NewHub(version string, h *handlers.Registry, ctx *handlers.Context) *Hub {
 		handlers:   h,
 		context:    ctx,
 		seq:        0,
+		startedAt:  time.Now(),
 	}
 }
 
@@ -449,7 +451,7 @@ func (c *Client) handleConnect(id string, params interface{}) {
 			Presence:     []protocol.PresenceEntry{},
 			Health:       map[string]interface{}{},
 			StateVersion: protocol.StateVersion{Presence: 0, Health: 0},
-			UptimeMs:     0,
+			UptimeMs:     time.Since(c.Hub.startedAt).Milliseconds(),
 		},
 		Policy: protocol.HelloPolicy{
 			MaxPayload:       1 << 20,

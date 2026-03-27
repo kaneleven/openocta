@@ -9,6 +9,15 @@ function qrImageUrlForAuthUrl(authUrl: string): string {
   return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${enc}`;
 }
 
+function weworkConfiguredFromForm(configForm: Record<string, unknown> | null): boolean {
+  const ch = configForm?.channels as Record<string, unknown> | undefined;
+  const wework = ch?.wework as Record<string, unknown> | undefined;
+  const creds = wework?.credentials as Record<string, unknown> | undefined;
+  const botId = typeof creds?.botId === "string" ? creds.botId.trim() : "";
+  const botSecret = typeof creds?.botSecret === "string" ? creds.botSecret.trim() : "";
+  return botId !== "" && botSecret !== "";
+}
+
 function renderWeWorkQrModal(props: ChannelsProps) {
   if (!props.weworkQrModalOpen) {
     return nothing;
@@ -25,7 +34,7 @@ function renderWeWorkQrModal(props: ChannelsProps) {
 
   return html`
     <div
-      class="channel-panel-overlay"
+      class="channel-panel-overlay channel-panel-overlay--centered"
       style="z-index: 1200;"
       @click=${(e: Event) => {
         if ((e.target as HTMLElement).classList.contains("channel-panel-overlay")) {
@@ -134,6 +143,8 @@ export function renderWeWorkCard(params: {
   const { props, wework, accountCountLabel } = params;
   const acc = props.snapshot?.channelAccounts?.wework?.[0];
   const probe = acc?.probe as { transport?: string } | undefined;
+  const configured =
+    Boolean(wework?.configured) || Boolean(acc?.configured) || weworkConfiguredFromForm(props.configForm);
   const qrBusy =
     props.weworkQrModalOpen &&
     (props.weworkQrModalLoading || props.weworkQrModalPolling) &&
@@ -155,7 +166,7 @@ export function renderWeWorkCard(params: {
           <div class="status-list account-card-status">
             <div>
               <span class="label">${t("channelConfigured")}</span>
-              <span>${wework?.configured ? t("commonYes") : t("commonNo")}</span>
+              <span>${configured ? t("commonYes") : t("commonNo")}</span>
             </div>
             <div>
               <span class="label">${t("channelWeWorkTransport")}</span>
