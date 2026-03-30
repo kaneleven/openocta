@@ -9,7 +9,9 @@
 | 入口 | 用途 | 产物 |
 |------|------|------|
 | `make wails` | Wails 桌面应用（当前平台） | `src/build/bin/OpenOcta.app`（macOS）或 `OpenOcta.exe`（Windows） |
-| `make wails-dmg` | macOS .dmg 安装镜像 | `dist/OpenOcta.app`、`dist/OpenOcta-<version>.dmg` |
+| `make wails-dmg` | macOS .dmg（当前机架构） | `dist/OpenOcta.app`、`dist/OpenOcta-<version>.dmg` |
+| `make wails-dmg-arm64` / `wails-dmg-amd64` | 分别打 Apple Silicon / Intel 的 .dmg | `dist/OpenOcta-<version>-darwin-arm64.dmg` 等 |
+| `make wails-dmg-all` | 连续构建上述两个架构（仅 macOS） | 两个 `.dmg` |
 | `./build.sh wails` | 同 `make wails`，并复制到 `dist/` | `dist/` 下的 .app 或 .exe |
 | `./build.sh wails-nsis` | Windows NSIS 安装器（**需在 Windows 上执行**） | `src/build/bin/OpenOcta-amd64-installer.exe` |
 | `./deploy/macos/build-app.sh` | macOS .app + .dmg 打包 | `dist/OpenOcta.app`、`dist/OpenOcta-<version>.dmg` |
@@ -89,6 +91,37 @@ make wails-dmg
 
 - 产物：`dist/OpenOcta.app`、`dist/OpenOcta-<version>.dmg`
 - 版本号来自 `git describe --tags`
+
+#### 双架构 .dmg（arm64 + amd64）
+
+**不可**在 Linux 上交叉编译 Wails macOS 应用；请在 **本机 macOS** 或 **GitHub Actions `macos-latest`** 上执行。
+
+```bash
+make wails-dmg-all
+# 或单独：
+make wails-dmg-arm64
+make wails-dmg-amd64
+```
+
+- 产物示例：`dist/OpenOcta-<version>-darwin-arm64.dmg`、`dist/OpenOcta-<version>-darwin-amd64.dmg`
+- 若已由 Makefile 执行过 `wails build -platform ...`，可对 `deploy/macos/build-app.sh` 使用 `SKIP_MAKE_WAILS=1`（Makefile 已自动设置）。
+
+#### GoReleaser 附加 DMG 与 GitHub Release
+
+1. **钩子**（`.goreleaser.yaml` → `before.hooks`）：`scripts/goreleaser-wails-dmg.sh`  
+   - 仅当 **`GORELEASER_INCLUDE_DMG=1`** 且在 **Darwin** 上运行时，会执行 `make embed && make wails-dmg-all`。  
+   - Linux CI 请勿设置该变量，钩子会跳过。
+
+2. **上传 DMG**：合并副配置（仅在已存在 `dist/OpenOcta*.dmg` 时使用）：
+
+   ```bash
+   export GORELEASER_INCLUDE_DMG=1
+   goreleaser release --clean -f .goreleaser.yaml -f .goreleaser.dmg.yaml
+   ```
+
+3. **GitHub**：在主 `.goreleaser.yaml` 的 `release` 中增加 `github` 段（`owner` / `name`），并设置 **`GITHUB_TOKEN`**（或 Actions 默认 `secrets.GITHUB_TOKEN`）。副配置 `.goreleaser.dmg.yaml` **只**含 `extra_files`，避免覆盖你现有的 `gitlab` 发布块。
+
+4. **推荐 CI**：单独 **macos-latest** job 负责「带 DMG 的完整 GoReleaser」；Linux job 可只做 deb/rpm（当前主配置即 Linux 二进制），避免在 Linux 上期待生成 `.dmg`。
 
 #### 用户安装步骤
 

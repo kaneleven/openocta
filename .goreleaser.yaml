@@ -2,6 +2,11 @@
 # 构建顺序：1) 前端 2) 复制 embed 资源 3) 后端 4) 打包
 # 使用：GITLAB_TOKEN=xxx goreleaser release --clean
 # 或本地：goreleaser release --snapshot --clean --skip=publish
+#
+# macOS Wails .dmg（arm64 + amd64）：
+# - 仅在 macOS 上可构建；设置 GORELEASER_INCLUDE_DMG=1 时运行 scripts/goreleaser-wails-dmg.sh。
+# - 推 Release 时若要把 DMG 一并上传：在 macOS runner 上执行，并合并 .goreleaser.dmg.yaml（见该文件注释）。
+# - 仅 Linux CI 时不要设 GORELEASER_INCLUDE_DMG，也不要合并 .goreleaser.dmg.yaml。
 
 version: 2
 project_name: openocta
@@ -18,6 +23,8 @@ before:
     - make ui
     - ls src/embed/
     - cd src && go mod download
+    # 可选：macOS + GORELEASER_INCLUDE_DMG=1 时生成 dist/OpenOcta-*-darwin-{arm64,amd64}.dmg
+    - ./scripts/goreleaser-wails-dmg.sh
 
 builds:
   # Linux 服务端二进制（rpm/deb/tar.gz），Windows/macOS 桌面版由 Wails 构建

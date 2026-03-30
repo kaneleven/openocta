@@ -4,6 +4,10 @@ set -euo pipefail
 # 使用 Wails 构建 macOS 桌面应用，并打包为 .dmg
 # 用法: ./deploy/macos/build-app.sh [--no-dmg]
 # --no-dmg: 仅构建 .app，不生成 .dmg
+#
+# 环境变量:
+#   SKIP_MAKE_WAILS=1  — 不执行 make wails（已由 Makefile 按架构执行 wails build 时使用）
+#   ARCH=arm64|amd64   — 写入 DMG 文件名后缀 -darwin-<ARCH>（便于区分双架构产物）
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -12,8 +16,12 @@ BUILD_DMG=1
 [[ "${1:-}" = "--no-dmg" ]] && BUILD_DMG=0
 
 cd "${ROOT}"
-echo "==> Wails 构建 macOS 应用..."
-make wails
+if [[ "${SKIP_MAKE_WAILS:-0}" != "1" ]]; then
+  echo "==> Wails 构建 macOS 应用（默认当前机架构）..."
+  make wails
+else
+  echo "==> 跳过 make wails（使用已有 OpenOcta.app）"
+fi
 
 APP="${ROOT}/src/build/bin/OpenOcta.app"
 if [[ ! -d "${APP}" ]]; then
@@ -27,7 +35,11 @@ echo "Built: ${ROOT}/dist/OpenOcta.app"
 
 if [[ "${BUILD_DMG}" -eq 1 ]]; then
   VERSION=$(git describe --tags --always 2>/dev/null | sed 's/^v//' || echo "SNAPSHOT")
-  DMG="${ROOT}/dist/OpenOcta-${VERSION}.dmg"
+  ARCH_SUFFIX=""
+  if [[ -n "${ARCH:-}" ]]; then
+    ARCH_SUFFIX="-darwin-${ARCH}"
+  fi
+  DMG="${ROOT}/dist/OpenOcta-${VERSION}${ARCH_SUFFIX}.dmg"
   DMG_TMP="${ROOT}/dist/OpenOcta-dmg-tmp"
   rm -rf "${DMG_TMP}" "${DMG}"
   mkdir -p "${DMG_TMP}"

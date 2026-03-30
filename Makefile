@@ -1,7 +1,7 @@
 # OpenOcta 构建
 # 构建顺序：前端 -> 复制 embed 资源 -> 后端
 
-.PHONY: ui embed go launcher build clean release snapshot docker run run-ui prepare-wails-icons wails wails-nsis wails-dmg wails-dev
+.PHONY: ui embed go launcher build clean release snapshot docker run run-ui prepare-wails-icons wails wails-nsis wails-dmg wails-dmg-arm64 wails-dmg-amd64 wails-dmg-all wails-dev
 
 # 构建前端（输出到 src/embed/frontend）
 ui:
@@ -72,9 +72,21 @@ wails: embed prepare-wails-icons
 wails-nsis:
 	./build.sh wails-nsis
 
-# Wails + 打包 .dmg（macOS），产物在 dist/OpenOcta.app 和 dist/OpenOcta-<version>.dmg
+# Wails + 打包 .dmg（macOS），产物在 dist/OpenOcta.app 和 dist/OpenOcta-<version>.dmg（当前机默认架构）
 wails-dmg: wails
 	./deploy/macos/build-app.sh
+
+# 分别打包 Apple Silicon / Intel 的 .dmg（需在 macOS 上执行；需已安装 Wails、Xcode CLI、对应交叉编译依赖）。
+# 不能从 Linux 交叉产出 Wails macOS 应用；CI 请使用 macos-latest。
+wails-dmg-arm64: embed prepare-wails-icons
+	cd src && wails build -skipbindings -platform darwin/arm64
+	cd "$(CURDIR)" && SKIP_MAKE_WAILS=1 ARCH=arm64 ./deploy/macos/build-app.sh
+
+wails-dmg-amd64: embed prepare-wails-icons
+	cd src && wails build -skipbindings -platform darwin/amd64
+	cd "$(CURDIR)" && SKIP_MAKE_WAILS=1 ARCH=amd64 ./deploy/macos/build-app.sh
+
+wails-dmg-all: wails-dmg-arm64 wails-dmg-amd64
 
 # Wails 开发模式（热重载）
 wails-dev: embed prepare-wails-icons
