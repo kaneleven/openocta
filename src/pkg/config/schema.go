@@ -1613,6 +1613,21 @@ type SessionConfig struct {
 	MainKey               *string                       `json:"mainKey,omitempty"`
 	SendPolicy            *SessionSendPolicyConfig      `json:"sendPolicy,omitempty"`
 	AgentToAgent          *SessionAgentToAgentConfig    `json:"agentToAgent,omitempty"`
+	// SessionHistory maps to agentsdk-go api.Options session history load policy (see agentsdk-go docs/session-history.md).
+	SessionHistory *SessionHistoryConfig `json:"sessionHistory,omitempty"`
+}
+
+// SessionHistoryConfig controls loading persisted conversation into the agent runtime on first use of a session ID in-process.
+type SessionHistoryConfig struct {
+	// Enabled defaults to true when nil; false disables automatic history loading for this runtime.
+	Enabled *bool `json:"enabled,omitempty"`
+	// MaxMessages maps to SessionHistoryMaxMessages (>0 keeps only the last N after load).
+	MaxMessages *int `json:"maxMessages,omitempty"`
+	// Roles maps to SessionHistoryRoles (non-empty filters by message role, case-insensitive).
+	Roles []string `json:"roles,omitempty"`
+	// LoadFromTranscript defaults to true when nil; when true, after projectRoot .claude/history/<session>.json
+	// yields no messages, load user/assistant turns from ~/.openocta/agents/<agentId>/sessions/<sessionId>.jsonl.
+	LoadFromTranscript *bool `json:"loadFromTranscript,omitempty"`
 }
 
 // SessionResetConfig holds session reset configuration.

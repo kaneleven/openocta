@@ -1201,7 +1201,7 @@ func ChatSendHandler(opts HandlerOpts) error {
 				SystemPromptOverrides: systemPromptOverrides,
 				MCPServers:            mcpServers,
 				TokenTracking:         true,
-				AgentID:               "main", // session transcript path is ~/.openocta/agents/main/sessions/<sessionID>.jsonl
+				AgentID:               agent.ResolveSessionAgentID(sessionKey), // 与 sessions jsonl 目录 ~/.openocta/agents/<agentId>/sessions 一致
 				Env:                   os.Getenv,
 			}
 			rt, err := runtime.New(ctx, rtOpts)

@@ -72,12 +72,12 @@
 
 ## 5. Agent 运行时（超时与 Skylark）
 
-| 变量 | 说明 |
-|------|------|
+| 变量 | 说明                                                                                                                                                  |
+|------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
 | `OPENOCTA_AGENT_RUN_TIMEOUT` | 单次对话/运行的默认时限（Go `time.ParseDuration` 或**非负整数秒**）。未设置默认 **10 分钟**；用于无 deadline 的 `Run` 包装及网关 chat 默认 `timeoutMs`。设为 `0` 表示不追加运行上限（流式仍建议由调用方或请求参数控制）。 |
-| `OPENOCTA_MIDDLEWARE_TIMEOUT` | agentsdk **每条 middleware 阶段**超时；未设置则不限制该层。 |
-| `OPENOCTA_HOOK_TIMEOUT` | shell **hook** 默认超时；未设置则沿用 agentsdk 对 `0` 的内部默认（约 600s）。 |
-| `OPENOCTA_SKYLARK` | Skylark 检索：`0` / `false` / `off` / `no` 关闭；`1` / `true` / `on` / `yes` 开启；其它未匹配时再读配置默认值（见 `src/pkg/agent/runtime/runtime.go`）。 |
+| `OPENOCTA_MIDDLEWARE_TIMEOUT` | agentsdk **每条 middleware 阶段**超时；未设置则不限制该层。                                                                                                          |
+| `OPENOCTA_HOOK_TIMEOUT` | shell **hook** 默认超时；未设置则沿用 agentsdk 对 `0` 的内部默认（约 600s）。                                                                                            |
+| `OPENOCTA_SKYLARK` | Skylark 检索：`0` / `false` / `off` / `no` 关闭；`1` / `true` / ` ` / `yes` 开启；其它未匹配时再读配置默认值（见 `src/pkg/agent/runtime/runtime.go`）。                       |
 
 ---
 

@@ -270,6 +270,7 @@ func New(ctx context.Context, opts Options) (*Runtime, error) {
 	//	ServiceName: "openclaw",
 	//	Endpoint:    "http://192.168.50.254:14318",
 	//}
+	applySessionHistory(&apiOpts, projectRoot, opts)
 	applyAPITimeouts(&apiOpts, opts)
 	runBudget := resolveAgentRunTimeout(opts)
 	rt, err := api.New(ctx, apiOpts)
@@ -320,6 +321,14 @@ type Options struct {
 	MiddlewareTimeout time.Duration
 	// HookTimeout is api.Options.HookTimeout; zero uses OPENOCTA_HOOK_TIMEOUT if set, otherwise agentsdk hook default.
 	HookTimeout time.Duration
+	// SessionHistoryLoader overrides default OpenOcta history loading (file + optional transcript). See agentsdk-go docs/session-history.md.
+	SessionHistoryLoader api.SessionHistoryLoader
+	// SessionHistoryMaxMessages is applied when SessionHistoryLoader is set, or overrides session.sessionHistory.maxMessages for the default loader.
+	SessionHistoryMaxMessages int
+	// SessionHistoryRoles filters loaded messages by role when SessionHistoryLoader is set, or overrides session.sessionHistory.roles for the default loader.
+	SessionHistoryRoles []string
+	// SessionHistoryTransform runs after load + SDK built-in policy (role filter / max messages).
+	SessionHistoryTransform api.SessionHistoryTransform
 }
 
 // mergeSkylarkOptions resolves api.SkylarkOptions: explicit opts.Skylark wins; then OPENOCTA_SKYLARK; then agents.defaults.skylark; default enabled (see agentsdk-go docs/skylark.md).
