@@ -2325,7 +2325,7 @@ export function renderApp(state: AppViewState) {
                     if (state.client && state.connected) {
                       await loadConfig(state);
                     }
-                    handleMcpSelect(state, serverKey);
+                    handleMcpSelect(state, serverKey, { syncFormEntryFromSnapshot: true });
                     state.toolLibraryMcpEditModalOpen = true;
                     state.toolLibraryMcpEditServerKey = state.mcpSelectedKey ?? serverKey;
                   })();

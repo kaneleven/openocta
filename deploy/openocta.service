@@ -12,7 +12,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/bin/bash -lc "exec /usr/bin/openocta gateway run --port 18900"
+ExecStart=/bin/bash -lic "exec /usr/bin/openocta gateway run --port 18900"
 Restart=on-failure
 RestartSec=5
 # 明确运行形态：Linux 下以 service 形式对外提供访问

@@ -143,6 +143,8 @@ type Strings = {
   mcpServerName: string;
   mcpNoServers: string;
   mcpEnabled: string;
+  /** 表单项「启用」旁复选框的简短标签（与列表状态「已启用」区分） */
+  mcpEnabledField: string;
   mcpDisabled: string;
   mcpFormMode: string;
   mcpRawMode: string;
@@ -1111,6 +1113,7 @@ const EN: Strings = {
   mcpServerName: "Server name",
   mcpNoServers: "No MCP servers configured.",
   mcpEnabled: "Enabled",
+  mcpEnabledField: "Enable",
   mcpDisabled: "Disabled",
   mcpFormMode: "Form",
   mcpRawMode: "Raw JSON",
@@ -2094,6 +2097,7 @@ const ZH: Strings = {
   mcpServerName: "服务器名称",
   mcpNoServers: "暂无 MCP 服务器配置。",
   mcpEnabled: "已启用",
+  mcpEnabledField: "启用",
   mcpDisabled: "已禁用",
   mcpFormMode: "表单",
   mcpRawMode: "原始 JSON",

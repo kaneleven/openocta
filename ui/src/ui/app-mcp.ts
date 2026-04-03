@@ -160,7 +160,12 @@ function resolveMcpServerKeyAndEntry(
   return { key: requestedKey, entry: get(requestedKey) };
 }
 
-export function handleMcpSelect(host: AppViewState, key: string | null) {
+/** 工具库「编辑」前会先 loadConfig：若 configFormDirty 为 true，快照已更新但 configForm 不会整体替换，内存里可能仍是安装时的默认 command（如 npx）。 */
+export type HandleMcpSelectOptions = {
+  syncFormEntryFromSnapshot?: boolean;
+};
+
+export function handleMcpSelect(host: AppViewState, key: string | null, opts?: HandleMcpSelectOptions) {
   host.mcpRawError = null;
   if (!key) {
     host.mcpSelectedKey = null;
@@ -187,8 +192,18 @@ export function handleMcpSelect(host: AppViewState, key: string | null) {
     if (!base.mcp.servers) {
       base.mcp.servers = {};
     }
-    if (base.mcp.servers[resolvedKey] === undefined) {
-      base.mcp.servers[resolvedKey] = cloneConfigObject(snapServers[resolvedKey] as McpServerEntry);
+    const snapEntry = snapServers[resolvedKey] as McpServerEntry;
+    const existing = base.mcp.servers[resolvedKey];
+    if (opts?.syncFormEntryFromSnapshot) {
+      base.mcp.servers[resolvedKey] = cloneConfigObject(snapEntry);
+    } else if (existing === undefined) {
+      base.mcp.servers[resolvedKey] = cloneConfigObject(snapEntry);
+    } else if (!mcpEntryLooksConfigured(existing) && mcpEntryLooksConfigured(snapEntry)) {
+      // 例如仅用「禁用」写过 enabled，表单里只有 { enabled: false }，快照里仍有完整 command/args —— 必须以快照补全，否则表单会误显示默认 npx。
+      base.mcp.servers[resolvedKey] = {
+        ...cloneConfigObject(snapEntry),
+        ...existing,
+      };
     }
   }
 

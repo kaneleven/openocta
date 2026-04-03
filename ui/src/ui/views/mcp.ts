@@ -1,4 +1,5 @@
 import { html, nothing, type TemplateResult } from "lit";
+import { keyed } from "lit/directives/keyed.js";
 import { nativeConfirm } from "../native-dialog-bridge.ts";
 import { t } from "../strings.js";
 
@@ -119,25 +120,58 @@ function parseEnvFromEdit(text: string): Record<string, string> {
   return out;
 }
 
+const MCP_COMMAND_PRESETS = ["npx", "docker", "uv"] as const;
+
+/** 与配置 JSON 对齐：trim；自定义 command（或带空格）不得误显示为 npx。 */
+function mcpStdioCommandSelectModel(command: string | undefined): {
+  value: string;
+  options: readonly string[];
+} {
+  const trimmed = (command ?? "").trim();
+  const value = trimmed || "npx";
+  const presets = MCP_COMMAND_PRESETS as readonly string[];
+  if (presets.includes(value)) {
+    return { value, options: presets };
+  }
+  return { value, options: [value, ...presets.filter((p) => p !== value)] };
+}
+
+/**
+ * Lit 复用 <select>/<option> 时 .value 与展示经常不同步（仍显示第一项 npx）。
+ * 用 keyed 在 model 变化时重建节点，并用 option 的 ?selected 绑定选中项。
+ */
+function renderMcpStdioCommandSelect(
+  sel: string,
+  options: readonly string[],
+  identityKey: string,
+  onPick: (command: string) => void,
+) {
+  const k = `${identityKey}\0${sel}\0${options.join("\0")}`;
+  // keyed 第二参数必须是 TemplateResult；传函数会被当成文本渲染成「乱码」。
+  return keyed(
+    k,
+    html`
+      <select @change=${(e: Event) => onPick((e.target as HTMLSelectElement).value)}>
+        ${options.map((c) => html`<option value=${c} ?selected=${c === sel}>${c}</option>`)}
+      </select>
+    `,
+  );
+}
+
 /** Exported for reuse in tool-library add modal. */
 export function renderMcpAddConnectionFields(
   type: "stdio" | "url" | "service",
   draft: McpServerEntry | undefined,
   onPatch: (p: Partial<McpServerEntry>) => void,
 ): TemplateResult {
-  const MCP_COMMAND_OPTIONS = ["npx", "docker", "uv"] as const;
   if (type === "stdio") {
-    const cmd = draft?.command ?? "npx";
-    const sel = MCP_COMMAND_OPTIONS.includes(cmd as (typeof MCP_COMMAND_OPTIONS)[number]) ? cmd : "npx";
+    const { value: sel, options } = mcpStdioCommandSelectModel(draft?.command);
     return html`
       <div class="field">
         <span>${t("mcpCommand")} *</span>
-        <span class="select"><select
-          .value=${sel}
-          @change=${(e: Event) => onPatch({ command: (e.target as HTMLSelectElement).value })}
-        >
-          ${MCP_COMMAND_OPTIONS.map((c) => html`<option value=${c}>${c}</option>`)}
-        </select></span>
+        <span class="select">
+          ${renderMcpStdioCommandSelect(sel, options, "mcp-add", (cmd) => onPatch({ command: cmd }))}
+        </span>
       </div>
       <div class="field">
         <span>${t("mcpArgs")}</span>
@@ -206,20 +240,16 @@ function renderEditConnectionTypeFields(
   selectedKey: string,
   onFormPatch: (key: string, p: Partial<McpServerEntry>) => void,
 ): TemplateResult {
-  const MCP_COMMAND_OPTIONS_EDIT = ["npx", "docker", "uv"] as const;
   if (type === "stdio") {
-    const cmd = selected.command ?? "npx";
-    const sel = MCP_COMMAND_OPTIONS_EDIT.includes(cmd as (typeof MCP_COMMAND_OPTIONS_EDIT)[number]) ? cmd : "npx";
+    const { value: sel, options } = mcpStdioCommandSelectModel(selected.command);
     return html`
       <div class="field">
         <span>${t("mcpCommand")} *</span>
-        <span class="select"><select
-          .value=${sel}
-          @change=${(e: Event) =>
-            onFormPatch(selectedKey, { command: (e.target as HTMLSelectElement).value })}
-        >
-          ${MCP_COMMAND_OPTIONS_EDIT.map((c) => html`<option value=${c}>${c}</option>`)}
-        </select></span>
+        <span class="select">
+          ${renderMcpStdioCommandSelect(sel, options, `mcp-edit:${selectedKey}`, (cmd) =>
+            onFormPatch(selectedKey, { command: cmd }),
+          )}
+        </span>
       </div>
       <div class="field">
         <span>${t("mcpArgs")}</span>
@@ -337,8 +367,8 @@ export function renderMcpEditModal(props: McpEditModalProps) {
             ? html`
                 <div class="config-form">
                   <div class="field">
-                    <span>${t("mcpEnabled")}</span>
-                    <div class="row" style="align-items: center; gap: 8px;">
+                    <div class="row" style="align-items: center; gap: 8px; flex-wrap: nowrap;">
+                      <span>${t("mcpEnabledField")}</span>
                       <span class="checkbox"><input
                         type="checkbox"
                         ?checked=${entry.enabled !== false}
@@ -780,8 +810,8 @@ export function renderMcp(props: McpProps) {
                       ? html`
                           <div class="config-form">
                             <div class="field">
-                              <span>${t("mcpEnabled")}</span>
-                              <div class="row" style="align-items: center; gap: 8px;">
+                              <div class="row" style="align-items: center; gap: 8px; flex-wrap: nowrap;">
+                                <span>${t("mcpEnabledField")}</span>
                                 <span class="checkbox"><input
                                   type="checkbox"
                                   ?checked=${selected.enabled !== false}
