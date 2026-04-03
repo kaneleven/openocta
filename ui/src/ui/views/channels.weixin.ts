@@ -1,4 +1,5 @@
 import { html, nothing } from "lit";
+import { icons } from "../icons.js";
 import type { WeixinStatus } from "../types.ts";
 import type { ChannelsProps } from "./channels.types.ts";
 import { formatAgo } from "../format.ts";
@@ -66,7 +67,9 @@ function renderWeixinQrModal(props: ChannelsProps) {
       <div class="card channel-panel" style="max-width: 400px; width: 92%;" @click=${(e: Event) => e.stopPropagation()}>
         <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 12px;">
           <div class="card-title" style="margin: 0;">${t("channelWeixinQrModalTitle")}</div>
-          <button type="button" class="btn" @click=${() => props.onWeixinQrModalClose()}>×</button>
+          <button type="button" class="btn btn--icon" aria-label="关闭" @click=${() => props.onWeixinQrModalClose()}>
+            ${icons.x}
+          </button>
         </div>
 
         ${

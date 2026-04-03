@@ -1,4 +1,5 @@
 import { html, nothing } from "lit";
+import { icons } from "../icons.js";
 import { t } from "../strings.js";
 import {
   BUILTIN_PROVIDERS,
@@ -494,7 +495,9 @@ export function renderModels(props: ModelsProps) {
             <div class="channel-panel card" style="max-width: 480px;" @click=${(e: Event) => e.stopPropagation()}>
               <div class="channel-panel-header row" style="justify-content: space-between; align-items: center;">
                 <div class="card-title">${t("modelsAddCustomProvider")}</div>
-                <button class="btn" @click=${props.onAddProviderModalClose}>×</button>
+                <button class="btn btn--icon" type="button" aria-label="关闭" @click=${props.onAddProviderModalClose}>
+                  ${icons.x}
+                </button>
               </div>
               <div class="channel-panel-content">
                 <div class="config-form">
@@ -577,7 +580,9 @@ export function renderModels(props: ModelsProps) {
             <div class="channel-panel card" style="max-width: 400px;" @click=${(e: Event) => e.stopPropagation()}>
               <div class="channel-panel-header row" style="justify-content: space-between; align-items: center;">
                 <div class="card-title">${getProviderDisplayName(props.useModelModalProvider!, props.providers?.[props.useModelModalProvider!])} - ${t("modelsSelectModelToUse")}</div>
-                <button class="btn" @click=${props.onUseModelModalClose}>×</button>
+                <button class="btn btn--icon" type="button" aria-label="关闭" @click=${props.onUseModelModalClose}>
+                  ${icons.x}
+                </button>
               </div>
               <div class="channel-panel-content">
                 <ul style="list-style: none; padding: 0; margin: 0;">
@@ -611,7 +616,9 @@ export function renderModels(props: ModelsProps) {
             <div class="channel-panel card" style="max-width: 400px;" @click=${(e: Event) => e.stopPropagation()}>
               <div class="channel-panel-header row" style="justify-content: space-between; align-items: center;">
                 <div class="card-title">${getProviderDisplayName(props.selectedProvider, props.providers?.[props.selectedProvider])} - ${t("modelsAddModel")}</div>
-                <button class="btn" @click=${props.onAddModelModalClose}>×</button>
+                <button class="btn btn--icon" type="button" aria-label="关闭" @click=${props.onAddModelModalClose}>
+                  ${icons.x}
+                </button>
               </div>
               <div class="channel-panel-content">
                 <div class="config-form">
@@ -689,7 +696,9 @@ export function renderModels(props: ModelsProps) {
                   <div class="card-title">
                     ${getProviderDisplayName(props.selectedProvider!, props.providers?.[props.selectedProvider!])} ${t("configSettingsTitle")}
                   </div>
-                  <button class="btn" @click=${props.onCancel}>×</button>
+                  <button class="btn btn--icon" type="button" aria-label="关闭" @click=${props.onCancel}>
+                    ${icons.x}
+                  </button>
                 </div>
                 <div class="channel-panel-content">
                   ${props.saveError
@@ -769,7 +778,7 @@ export function renderModels(props: ModelsProps) {
                         ?disabled=${props.saving}
                         @click=${() => props.onAddModel(props.selectedProvider!)}
                       >
-                        + ${t("modelsAddModel")}
+                        <span class="btn__icon">${icons.plus}</span>${t("modelsAddModel")}
                       </button>
                     </div>
                     ${(props.providers?.[props.selectedProvider!]?.models ?? []).length === 0
@@ -846,7 +855,7 @@ export function renderModels(props: ModelsProps) {
                                             style="font-size: 11px; margin-top: 4px;"
                                             @click=${() => props.onPatchModelEnv(props.selectedProvider!, m.id, { "__new__": "" })}
                                           >
-                                            + ${t("envVarsAdd")}
+                                            <span class="btn__icon">${icons.plus}</span>${t("envVarsAdd")}
                                           </button>
                                         `
                                       : html`
@@ -877,11 +886,20 @@ export function renderModels(props: ModelsProps) {
                                                     props.onPatchModelEnv(props.selectedProvider!, m.id, next);
                                                   }}
                                                 /></span>
-                                                <button class="btn btn--sm" style="font-size: 11px;" @click=${() => {
+                                                <button
+                                                  class="btn btn--sm"
+                                                  type="button"
+                                                  style="font-size: 11px;"
+                                                  aria-label=${t("envVarsDelete")}
+                                                  title=${t("envVarsDelete")}
+                                                  @click=${() => {
                                                   const next = { ...mEnv };
                                                   delete next[k];
                                                   props.onPatchModelEnv(props.selectedProvider!, m.id, next);
-                                                }}>×</button>
+                                                }}
+                                                >
+                                                  ${icons.x}
+                                                </button>
                                               </div>
                                             `)}
                                             <button
@@ -892,7 +910,7 @@ export function renderModels(props: ModelsProps) {
                                                 props.onPatchModelEnv(props.selectedProvider!, m.id, next);
                                               }}
                                             >
-                                              + ${t("envVarsAdd")}
+                                              <span class="btn__icon">${icons.plus}</span>${t("envVarsAdd")}
                                             </button>
                                           </div>
                                         `}
@@ -913,8 +931,8 @@ export function renderModels(props: ModelsProps) {
                     >
                       ${props.saving ? t("commonSaving") : t("commonSave")}
                     </button>
-                    <button class="btn" ?disabled=${props.saving} @click=${props.onCancel}>
-                      ×
+                    <button class="btn" type="button" aria-label="关闭" ?disabled=${props.saving} @click=${props.onCancel}>
+                      ${t("commonCancel")}
                     </button>
                   </div>
                 </div>

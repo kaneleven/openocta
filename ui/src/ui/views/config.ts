@@ -1,4 +1,5 @@
 import { html, nothing } from "lit";
+import { icons } from "../icons.js";
 import type { ConfigUiHints } from "../types.ts";
 import { getConfigFieldHelp } from "../config-field-help.js";
 import { getConfigFieldLabel } from "../config-field-labels.js";
@@ -508,9 +509,11 @@ export function renderConfig(props: ConfigProps) {
               ? html`
                 <button
                   class="config-search__clear"
+                  type="button"
+                  aria-label="清空搜索"
                   @click=${() => props.onSearchChange("")}
                 >
-                  ×
+                  ${icons.x}
                 </button>
               `
               : nothing

@@ -1,4 +1,5 @@
 import { html, nothing, type TemplateResult } from "lit";
+import { icons as appIcons } from "../icons.js";
 import type { ConfigUiHints } from "../types.ts";
 import { getConfigFieldHelp } from "../config-field-help.js";
 import { getConfigFieldLabel } from "../config-field-labels.js";
@@ -46,29 +47,10 @@ const icons = {
     </svg>
   `,
   plus: html`
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
-      <line x1="12" y1="5" x2="12" y2="19"></line>
-      <line x1="5" y1="12" x2="19" y2="12"></line>
-    </svg>
+    ${appIcons.plus}
   `,
   minus: html`
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
-      <line x1="5" y1="12" x2="19" y2="12"></line>
-    </svg>
+    ${appIcons.minus}
   `,
   trash: html`
     <svg
@@ -488,9 +470,10 @@ function renderNumberInput(params: {
         <button
           type="button"
           class="cfg-number__btn"
+          aria-label="减少"
           ?disabled=${disabled}
           @click=${() => onPatch(path, numValue - 1)}
-        >−</button>
+        >${icons.minus}</button>
         <span class="input"><input
           type="number"
           class="cfg-number__input"
@@ -505,9 +488,10 @@ function renderNumberInput(params: {
         <button
           type="button"
           class="cfg-number__btn"
+          aria-label="增加"
           ?disabled=${disabled}
           @click=${() => onPatch(path, numValue + 1)}
-        >+</button>
+        >${icons.plus}</button>
       </div>
     </div>
   `;

@@ -1201,6 +1201,34 @@
   padding-top: 16px;
 }
 
+.channel-panel-header .btn--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease;
+  appearance: none;
+  box-shadow: none;
+}
+
+.channel-panel-header .btn--icon svg {
+  display: block;
+  width: 23px;
+  height: 23px;
+}
+
+.channel-panel-header .btn--icon:focus-visible {
+  outline: 2px solid var(--brand2);
+  outline-offset: 2px;
+}
+
 /* ===========================================
    Exec Approval Modal
    =========================================== */

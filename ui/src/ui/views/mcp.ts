@@ -1,5 +1,6 @@
 import { html, nothing, type TemplateResult } from "lit";
 import { keyed } from "lit/directives/keyed.js";
+import { icons } from "../icons.js";
 import { nativeConfirm } from "../native-dialog-bridge.ts";
 import { t } from "../strings.js";
 
@@ -784,7 +785,9 @@ export function renderMcp(props: McpProps) {
               <div class="channel-panel card" @click=${(e: Event) => e.stopPropagation()}>
                 <div class="channel-panel-header row" style="justify-content: space-between; align-items: center;">
                   <div class="card-title">${resolveServerLabel(props.selectedKey)} ${t("configSettingsTitle")}</div>
-                  <button class="btn" @click=${props.onCancel}>×</button>
+                  <button class="btn btn--icon" type="button" aria-label="关闭" @click=${props.onCancel}>
+                    ${icons.x}
+                  </button>
                 </div>
                 <div class="channel-panel-content">
                   <div class="row" style="margin-bottom: 12px; gap: 8px;">
@@ -898,8 +901,8 @@ export function renderMcp(props: McpProps) {
                     >
                       ${props.saving ? t("commonSaving") : t("commonSave")}
                     </button>
-                    <button class="btn" ?disabled=${props.saving} @click=${props.onCancel}>
-                      ×
+                    <button class="btn btn--icon" type="button" aria-label="关闭" ?disabled=${props.saving} @click=${props.onCancel}>
+                      ${icons.x}
                     </button>
                   </div>
                 </div>

@@ -35,8 +35,9 @@ describe("usage-helpers", () => {
     const res = parseToolSummary(
       "[Tool: read]\n[Tool Result]\n[Tool: exec]\n[Tool: read]\n[Tool Result]",
     );
-    expect(res.summary).toContain("read");
-    expect(res.summary).toContain("exec");
+    expect(res.summary).toContain("read (2)");
+    expect(res.summary).toContain("exec (1)");
+    expect(res.summary).not.toContain("×");
     expect(res.tools[0]?.[0]).toBe("read");
     expect(res.tools[0]?.[1]).toBe(2);
   });

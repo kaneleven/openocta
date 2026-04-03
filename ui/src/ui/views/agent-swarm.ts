@@ -1,4 +1,5 @@
 import { html } from "lit";
+import { icons } from "../icons.js";
 import { t } from "../strings.js";
 
 export function renderAgentSwarm() {
@@ -93,8 +94,12 @@ export function renderAgentSwarm() {
             <div class="agent-swarm__graph">
               <div class="agent-swarm__graph-controls">
                 <span class="agent-swarm__graph-zoom">缩放 70%</span>
-                <button class="agent-swarm__graph-btn" disabled>+</button>
-                <button class="agent-swarm__graph-btn" disabled>-</button>
+                <button class="agent-swarm__graph-btn" type="button" aria-label="放大" disabled>
+                  ${icons.plus}
+                </button>
+                <button class="agent-swarm__graph-btn" type="button" aria-label="缩小" disabled>
+                  ${icons.minus}
+                </button>
                 <button class="agent-swarm__graph-btn" disabled>Reset</button>
                 <span class="agent-swarm__graph-hint">Ctrl/⌘ + 滚轮缩放</span>
               </div>

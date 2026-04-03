@@ -75,6 +75,13 @@ describe("control UI routing", () => {
     const app = mountApp("/overview");
     await app.updateComplete;
 
+    const content = app.querySelector<HTMLElement>(".content");
+    expect(content).not.toBeNull();
+    if (!content) {
+      return;
+    }
+    content.scrollTop = 320;
+
     const link = app.querySelector<HTMLAnchorElement>('a.nav-item[href="/channels"]');
     expect(link).not.toBeNull();
     link?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
@@ -82,6 +89,7 @@ describe("control UI routing", () => {
     await app.updateComplete;
     expect(app.tab).toBe("channels");
     expect(window.location.pathname).toBe("/channels");
+    expect(app.querySelector<HTMLElement>(".content")?.scrollTop).toBe(0);
   });
 
   it("highlights the active top tab for catalog routes", async () => {

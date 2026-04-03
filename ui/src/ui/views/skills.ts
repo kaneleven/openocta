@@ -1,5 +1,6 @@
 import { html, nothing } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
+import { icons } from "../icons.js";
 import type { SkillMessageMap } from "../controllers/skills.ts";
 import type { SkillStatusEntry, SkillStatusReport } from "../types.ts";
 import { clampText } from "../format.ts";
@@ -685,7 +686,9 @@ function renderSkillDetailModal(
       >
         <div class="row" style="justify-content: space-between; align-items: center; flex-shrink: 0;">
           <div class="card-title">${skill.emoji ? `${skill.emoji} ` : ""}${skill.name}</div>
-          <button class="btn" @click=${onClose}>×</button>
+          <button class="btn btn--icon" type="button" aria-label="关闭" @click=${onClose}>
+            ${icons.x}
+          </button>
         </div>
         <div class="card-sub" style="margin-top: 4px; flex-shrink: 0;">${skill.description}</div>
         <div

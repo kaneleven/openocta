@@ -1,4 +1,5 @@
 import { html, nothing, type TemplateResult } from "lit";
+import { icons } from "../icons.js";
 import { t } from "../strings.js";
 import type { McpServerEntry } from "./mcp.js";
 
@@ -218,7 +219,7 @@ export function renderDigitalEmployeeEditModal(props: DigitalEmployeeEditModalPr
                       可添加多个 MCP；配置完成后可折叠，避免页面过长。
                     </div>
                     <button class="btn btn--sm" type="button" @click=${props.onEditMcpAddItem}>
-                      + 添加 MCP
+                      <span class="btn__icon">${icons.plus}</span>添加 MCP
                     </button>
                   </div>
                   <div style="margin-top: 8px; display: grid; gap: 10px;">
@@ -467,7 +468,7 @@ export function renderDigitalEmployeeCreateModal(props: DigitalEmployeeCreateMod
                             可添加多个 MCP；配置完成后可折叠，避免页面过长。
                           </div>
                           <button class="btn btn--sm" type="button" @click=${props.onMcpAddItem}>
-                            + 添加 MCP
+                            <span class="btn__icon">${icons.plus}</span>添加 MCP
                           </button>
                         </div>
                         <div style="margin-top: 8px; display: grid; gap: 10px;">
@@ -742,7 +743,7 @@ export function renderDigitalEmployee(props: DigitalEmployeeProps) {
                                           可添加多个 MCP；配置完成后可折叠，避免页面过长。
                                         </div>
                                         <button class="btn btn--sm" type="button" @click=${props.onMcpAddItem}>
-                                          + 添加 MCP
+                                          <span class="btn__icon">${icons.plus}</span>添加 MCP
                                         </button>
                                       </div>
                                       <div style="margin-top: 8px; display: grid; gap: 10px;">
@@ -1230,4 +1231,3 @@ function renderEmployeeMcpFormFields(
     </div>
   `;
 }
-

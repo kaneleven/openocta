@@ -1,6 +1,12 @@
 import { html, svg, nothing } from "lit";
-import { t } from "../strings.js";
-import { extractQueryTerms, filterSessionsByQuery, parseToolSummary } from "../usage-helpers.ts";
+import { icons } from "../icons.js";
+import { getLocale, t } from "../strings.js";
+import {
+  extractQueryTerms,
+  filterSessionsByQuery,
+  formatToolCountLabel,
+  parseToolSummary,
+} from "../usage-helpers.ts";
 
 export type UsageSessionEntry = {
   key: string;
@@ -309,6 +315,10 @@ function formatHourLabel(hour: number): string {
   const date = new Date();
   date.setHours(hour, 0, 0, 0);
   return date.toLocaleTimeString(undefined, { hour: "numeric" });
+}
+
+function formatMoreSessionsLabel(count: number): string {
+  return getLocale() === "zh" ? `还有 ${count} 项` : `${count} ${t("usageMoreSessions")}`;
 }
 
 function buildPeakErrorHours(sessions: UsageSessionEntry[], timeZone: "local" | "utc") {
@@ -1315,7 +1325,15 @@ function renderFilterChips(
           ? html`
             <div class="filter-chip">
               <span class="filter-chip-label">${t("usageDays")}: ${daysLabel}</span>
-              <button class="filter-chip-remove" @click=${onClearDays} title=${t("usageRemoveFilter")}>×</button>
+              <button
+                class="filter-chip-remove"
+                type="button"
+                @click=${onClearDays}
+                title=${t("usageRemoveFilter")}
+                aria-label=${t("usageRemoveFilter")}
+              >
+                ${icons.x}
+              </button>
             </div>
           `
           : nothing
@@ -1325,7 +1343,15 @@ function renderFilterChips(
           ? html`
             <div class="filter-chip">
               <span class="filter-chip-label">${t("usageHoursLabel")}: ${hoursLabel}</span>
-              <button class="filter-chip-remove" @click=${onClearHours} title=${t("usageRemoveFilter")}>×</button>
+              <button
+                class="filter-chip-remove"
+                type="button"
+                @click=${onClearHours}
+                title=${t("usageRemoveFilter")}
+                aria-label=${t("usageRemoveFilter")}
+              >
+                ${icons.x}
+              </button>
             </div>
           `
           : nothing
@@ -1335,7 +1361,15 @@ function renderFilterChips(
           ? html`
             <div class="filter-chip" title="${sessionsFullName}">
               <span class="filter-chip-label">${t("usageSession")}: ${sessionsLabel}</span>
-              <button class="filter-chip-remove" @click=${onClearSessions} title=${t("usageRemoveFilter")}>×</button>
+              <button
+                class="filter-chip-remove"
+                type="button"
+                @click=${onClearSessions}
+                title=${t("usageRemoveFilter")}
+                aria-label=${t("usageRemoveFilter")}
+              >
+                ${icons.x}
+              </button>
             </div>
           `
           : nothing
@@ -2018,7 +2052,9 @@ function renderSessionsCard(
                       </div>
                     `;
                   })}
-                  ${sessions.length > 50 ? html`<div class="muted" style="padding: 8px; text-align: center; font-size: 11px;">+${sessions.length - 50} ${t("usageMoreSessions")}</div>` : nothing}
+                  ${sessions.length > 50
+                    ? html`<div class="muted" style="padding: 8px; text-align: center; font-size: 11px;">${formatMoreSessionsLabel(sessions.length - 50)}</div>`
+                    : nothing}
                 </div>
               `
       }
@@ -2190,7 +2226,15 @@ function renderSessionDetailPanel(
               : nothing
           }
         </div>
-        <button class="session-close-btn" @click=${onClose} title=${t("usageCloseSessionDetails")}>×</button>
+        <button
+          class="session-close-btn"
+          type="button"
+          @click=${onClose}
+          title=${t("usageCloseSessionDetails")}
+          aria-label=${t("usageCloseSessionDetails")}
+        >
+          ${icons.x}
+        </button>
       </div>
       <div class="session-detail-content">
         ${renderSessionSummary(session)}
@@ -2544,7 +2588,7 @@ function renderContextPanel(
                     </div>
                     ${
                       more > 0
-                        ? html`<div class="context-breakdown-more">+${more} ${t("usageMoreSessions")}</div>`
+                        ? html`<div class="context-breakdown-more">${formatMoreSessionsLabel(more)}</div>`
                         : nothing
                     }
                   </div>
@@ -2571,7 +2615,7 @@ function renderContextPanel(
                     </div>
                     ${
                       more > 0
-                        ? html`<div class="context-breakdown-more">+${more} ${t("usageMoreSessions")}</div>`
+                        ? html`<div class="context-breakdown-more">${formatMoreSessionsLabel(more)}</div>`
                         : nothing
                     }
                   </div>
@@ -2598,7 +2642,7 @@ function renderContextPanel(
                     </div>
                     ${
                       more > 0
-                        ? html`<div class="context-breakdown-more">+${more} ${t("usageMoreSessions")}</div>`
+                        ? html`<div class="context-breakdown-more">${formatMoreSessionsLabel(more)}</div>`
                         : nothing
                     }
                   </div>
@@ -2767,7 +2811,7 @@ function renderSessionLogsCompact(
                       <div class="session-log-tools-list">
                         ${toolInfo.tools.map(
                           ([name, count]) => html`
-                            <span class="session-log-tools-pill">${name} × ${count}</span>
+                            <span class="session-log-tools-pill">${formatToolCountLabel(name, count)}</span>
                           `,
                         )}
                       </div>
@@ -3423,11 +3467,13 @@ export function renderUsage(props: UsageProps) {
                       <span class="usage-query-chip">
                         ${label}
                         <button
+                          type="button"
                           title="Remove filter"
+                          aria-label="Remove filter"
                           @click=${() =>
                             props.onQueryDraftChange(removeQueryToken(props.queryDraft, label))}
                         >
-                          ×
+                          ${icons.x}
                         </button>
                       </span>
                     `;

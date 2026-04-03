@@ -63,6 +63,18 @@ type SettingsHost = {
   pendingGatewayUrl?: string | null;
 };
 
+function scrollContentToTop(host: SettingsHost) {
+  const querySelector = (host as unknown as ParentNode).querySelector;
+  if (typeof querySelector !== "function") {
+    return;
+  }
+  const content = querySelector.call(host, ".content");
+  if (!(content instanceof HTMLElement)) {
+    return;
+  }
+  content.scrollTop = 0;
+}
+
 export function applySettings(host: SettingsHost, next: UiSettings) {
   const normalized = {
     ...next,
@@ -146,8 +158,10 @@ export function applySettingsFromUrl(host: SettingsHost) {
 export function setTab(host: SettingsHost, next: Tab) {
   const nextTab =
     next === "chat" && (host.sessionKey?.trim() ?? "") ? ("message" as Tab) : next;
-  if (host.tab !== nextTab) {
+  const tabChanged = host.tab !== nextTab;
+  if (tabChanged) {
     host.tab = nextTab;
+    scrollContentToTop(host);
   }
   if (nextTab === "chat") {
     host.chatHasAutoScrolled = false;
@@ -404,8 +418,10 @@ export function onPopState(host: SettingsHost) {
 }
 
 export function setTabFromRoute(host: SettingsHost, next: Tab) {
-  if (host.tab !== next) {
+  const tabChanged = host.tab !== next;
+  if (tabChanged) {
     host.tab = next;
+    scrollContentToTop(host);
   }
   if (next === "chat") {
     host.chatHasAutoScrolled = false;

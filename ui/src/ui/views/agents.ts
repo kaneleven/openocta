@@ -292,6 +292,8 @@ function resolveAgentConfig(config: Record<string, unknown> | null, agentId: str
 type AgentContext = {
     workspace: string;
     model: string;
+    modelPrimary: string | null;
+    modelFallbackCount: number;
     identityName: string;
     identityEmoji: string;
     skillsLabel: string;
@@ -310,9 +312,9 @@ function buildAgentContext(
         agentFilesList && agentFilesList.agentId === agent.id ? agentFilesList.workspace : null;
     const workspace =
         workspaceFromFiles || config.entry?.workspace || config.defaults?.workspace || "default";
-    const modelLabel = config.entry?.model
-        ? resolveModelLabel(config.entry?.model)
-        : resolveModelLabel(config.defaults?.model);
+    const modelSource = config.entry?.model ?? config.defaults?.model;
+    const modelPrimary = resolveModelPrimary(modelSource);
+    const modelFallbackCount = resolveModelFallbackCount(modelSource);
     const identityName =
         agentIdentity?.name?.trim() ||
         agent.identity?.name?.trim() ||
@@ -324,7 +326,9 @@ function buildAgentContext(
     const skillCount = skillFilter?.length ?? null;
     return {
         workspace,
-        model: modelLabel,
+        model: formatModelLabel(modelPrimary, modelFallbackCount),
+        modelPrimary,
+        modelFallbackCount,
         identityName,
         identityEmoji,
         skillsLabel: skillFilter ? `${skillCount} ${t("agentsSelected")}` : t("agentsAllSkills"),
@@ -332,27 +336,11 @@ function buildAgentContext(
     };
 }
 
-function resolveModelLabel(model?: unknown): string {
-    if (!model) {
+function formatModelLabel(primary: string | null, fallbackCount: number): string {
+    if (!primary) {
         return "-";
     }
-    if (typeof model === "string") {
-        return model.trim() || "-";
-    }
-    if (typeof model === "object" && model) {
-        const record = model as { primary?: string; fallbacks?: string[] };
-        const primary = record.primary?.trim();
-        if (primary) {
-            const fallbackCount = Array.isArray(record.fallbacks) ? record.fallbacks.length : 0;
-            return fallbackCount > 0 ? `${primary} (+${fallbackCount} ${t("agentsFallback")})` : primary;
-        }
-    }
-    return "-";
-}
-
-function normalizeModelValue(label: string): string {
-    const match = label.match(/^(.+) \(\+\d+ fallback\)$/);
-    return match ? match[1] : label;
+    return fallbackCount > 0 ? `${primary} (${fallbackCount} ${t("agentsFallback")})` : primary;
 }
 
 function resolveModelPrimary(model?: unknown): string | null {
@@ -379,6 +367,10 @@ function resolveModelPrimary(model?: unknown): string | null {
         return primary || null;
     }
     return null;
+}
+
+function resolveModelFallbackCount(model?: unknown): number {
+    return resolveModelFallbacks(model)?.length ?? 0;
 }
 
 function resolveModelFallbacks(model?: unknown): string[] | null {
@@ -812,16 +804,15 @@ function renderAgentOverview(params: {
         agentFilesList && agentFilesList.agentId === agent.id ? agentFilesList.workspace : null;
     const workspace =
         workspaceFromFiles || config.entry?.workspace || config.defaults?.workspace || "default";
-    const model = config.entry?.model
-        ? resolveModelLabel(config.entry?.model)
-        : resolveModelLabel(config.defaults?.model);
-    const defaultModel = resolveModelLabel(config.defaults?.model);
-    const modelPrimary =
-        resolveModelPrimary(config.entry?.model) || (model !== "-" ? normalizeModelValue(model) : null);
-    const defaultPrimary =
-        resolveModelPrimary(config.defaults?.model) ||
-        (defaultModel !== "-" ? normalizeModelValue(defaultModel) : null);
+    const modelPrimary = resolveModelPrimary(config.entry?.model);
+    const defaultPrimary = resolveModelPrimary(config.defaults?.model);
     const effectivePrimary = modelPrimary ?? defaultPrimary ?? null;
+    const model = formatModelLabel(
+        config.entry?.model ? modelPrimary : defaultPrimary,
+        config.entry?.model
+            ? resolveModelFallbackCount(config.entry?.model)
+            : resolveModelFallbackCount(config.defaults?.model),
+    );
     const modelFallbacks = resolveModelFallbacks(config.entry?.model);
     const fallbackText = modelFallbacks ? modelFallbacks.join(", ") : "";
     const identityName =

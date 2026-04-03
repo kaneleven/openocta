@@ -1,4 +1,5 @@
 import { html, nothing } from "lit";
+import { icons } from "../icons.js";
 import type { ConfigUiHints } from "../types.ts";
 import type { ChannelsProps } from "./channels.types.ts";
 import { t } from "../strings.js";
@@ -178,7 +179,9 @@ export function renderChannelConfigPanel(props: ChannelsProps) {
       <div class="channel-panel card" @click=${(e: Event) => e.stopPropagation()}>
         <div class="channel-panel-header row" style="justify-content: space-between; align-items: center;">
           <div class="card-title">${label} ${t("configSettingsTitle")}</div>
-          <button class="btn" @click=${() => props.onChannelSelect(null)}>×</button>
+          <button class="btn btn--icon" type="button" aria-label="关闭" @click=${() => props.onChannelSelect(null)}>
+            ${icons.x}
+          </button>
         </div>
         <div class="channel-panel-content">
           ${renderChannelConfigSection({ channelId, props })}

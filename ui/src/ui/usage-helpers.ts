@@ -310,12 +310,16 @@ export function parseToolSummary(content: string) {
   const summary =
     sortedTools.length > 0
       ? `Tools: ${sortedTools
-          .map(([name, count]) => `${name}×${count}`)
-          .join(", ")} (${totalCalls} calls)`
+          .map(([name, count]) => formatToolCountLabel(name, count))
+          .join(", ")}; ${totalCalls} calls`
       : "";
   return {
     tools: sortedTools,
     summary,
     cleanContent: nonToolLines.join("\n").trim(),
   };
+}
+
+export function formatToolCountLabel(name: string, count: number): string {
+  return `${name} (${count})`;
 }

@@ -1,13 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Tab } from "./navigation.ts";
-import { setTabFromRoute } from "./app-settings.ts";
+const refreshChatMock = vi.hoisted(() => vi.fn(async () => undefined));
+const loadLogsMock = vi.hoisted(() => vi.fn(async () => undefined));
+vi.mock("./app-chat.ts", () => ({
+  refreshChat: refreshChatMock,
+}));
+vi.mock("./controllers/logs.ts", () => ({
+  loadLogs: loadLogsMock,
+}));
+import { setTab, setTabFromRoute } from "./app-settings.ts";
 
 type SettingsHost = Parameters<typeof setTabFromRoute>[0] & {
   logsPollInterval: number | null;
   debugPollInterval: number | null;
+  logsScrollFrame?: number | null;
+  updateComplete?: Promise<void>;
+  querySelector?: ReturnType<typeof vi.fn>;
 };
 
-const createHost = (tab: Tab): SettingsHost => ({
+const createHost = (tab: Tab, content?: HTMLElement): SettingsHost => ({
   settings: {
     gatewayUrl: "",
     token: "",
@@ -35,6 +46,9 @@ const createHost = (tab: Tab): SettingsHost => ({
   themeMediaHandler: null,
   logsPollInterval: null,
   debugPollInterval: null,
+  logsScrollFrame: null,
+  updateComplete: Promise.resolve(),
+  querySelector: vi.fn((selector: string) => (selector === ".content" ? content ?? null : null)),
 });
 
 describe("setTabFromRoute", () => {
@@ -66,5 +80,38 @@ describe("setTabFromRoute", () => {
 
     setTabFromRoute(host, "chat");
     expect(host.debugPollInterval).toBeNull();
+  });
+
+  it("scrolls content to top when setTab changes the route tab", () => {
+    const content = document.createElement("main");
+    content.className = "content";
+    content.scrollTop = 240;
+    const host = createHost("chat", content);
+
+    setTab(host, "logs");
+
+    expect(content.scrollTop).toBe(0);
+  });
+
+  it("does not scroll content when setTab targets the current tab", () => {
+    const content = document.createElement("main");
+    content.className = "content";
+    content.scrollTop = 240;
+    const host = createHost("logs", content);
+
+    setTab(host, "logs");
+
+    expect(host.querySelector).not.toHaveBeenCalledWith(".content");
+  });
+
+  it("scrolls content to top when route changes via setTabFromRoute", () => {
+    const content = document.createElement("main");
+    content.className = "content";
+    content.scrollTop = 180;
+    const host = createHost("chat", content);
+
+    setTabFromRoute(host, "logs");
+
+    expect(content.scrollTop).toBe(0);
   });
 });
