@@ -108,8 +108,9 @@ func main() {
 		MinWidth:  800,
 		MinHeight: 600,
 	}
+	// Windows 使用系统原生标题栏，确保窗口有最小化/最大化/关闭按钮，可拖动和调整大小
 	if runtime.GOOS == "windows" {
-		appOptions.Frameless = true
+		appOptions.Frameless = false
 	}
 	runErr := wails.Run(appOptions)
 	if runErr != nil {
