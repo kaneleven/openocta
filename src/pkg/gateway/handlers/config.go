@@ -506,7 +506,9 @@ func configToMap(cfg *config.OpenOctaConfig) map[string]interface{} {
 	return m
 }
 
-func mergePatch(base, patch map[string]interface{}) map[string]interface{} {
+// mergePatch 合并 patch 到 base，支持路径感知。
+// path 参数表示当前合并路径（如 ["mcp", "servers", "es-mcp"]），用于精确判断 mcp.servers.*.env。
+func mergePatchWithPath(base, patch map[string]interface{}, path []string) map[string]interface{} {
 	result := make(map[string]interface{})
 	for k, v := range base {
 		result[k] = v
@@ -516,7 +518,13 @@ func mergePatch(base, patch map[string]interface{}) map[string]interface{} {
 			delete(result, k)
 			continue
 		}
-		if k == "env" {
+		// Phase 2f: mcp.servers.<server>.env 使用替换语义，否则删除环境变量时无法同步到后端
+		if k == "env" && isMcpServersEnvPath(path) {
+			result[k] = v
+			continue
+		}
+		// 顶层 env 使用特殊合并逻辑（保留 vars 替换语义）
+		if k == "env" && len(path) == 0 {
 			baseEnv, _ := result["env"].(map[string]interface{})
 			patchEnv, ok := v.(map[string]interface{})
 			if !ok {
@@ -529,12 +537,23 @@ func mergePatch(base, patch map[string]interface{}) map[string]interface{} {
 		baseVal, baseOk := result[k].(map[string]interface{})
 		patchVal, patchOk := v.(map[string]interface{})
 		if baseOk && patchOk {
-			result[k] = mergePatch(baseVal, patchVal)
+			newPath := append(append([]string(nil), path...), k)
+			result[k] = mergePatchWithPath(baseVal, patchVal, newPath)
 		} else {
 			result[k] = v
 		}
 	}
 	return result
+}
+
+// isMcpServersEnvPath 判断当前路径是否为 mcp.servers.<server>.env（即 path 为 ["mcp", "servers", "<server>"]）
+func isMcpServersEnvPath(path []string) bool {
+	return len(path) == 3 && path[0] == "mcp" && path[1] == "servers"
+}
+
+// mergePatch 对外暴露的合并函数，保持兼容。
+func mergePatch(base, patch map[string]interface{}) map[string]interface{} {
+	return mergePatchWithPath(base, patch, nil)
 }
 
 // mergePatchEnv merges env with special handling: modelEnv uses replace-per-modelRef (not recursive merge).
