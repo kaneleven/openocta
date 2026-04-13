@@ -169,12 +169,14 @@ func (r *Runtime) Stop() error {
 // Send 通过长连接主动发送 Markdown（或作为普通文本通道使用）。
 func (r *Runtime) Send(msg *channels.RuntimeOutboundMessage) error {
 	if msg == nil {
+		fmt.Println("[wework-runtime] Send called with nil message")
 		return nil
 	}
 	r.mu.Lock()
 	cl := r.client
 	r.mu.Unlock()
 	if cl == nil || !cl.IsConnected() {
+		fmt.Println("[wework-runtime] Send failed: websocket not connected")
 		return fmt.Errorf("wework runtime: websocket not connected")
 	}
 	chatID := strings.TrimSpace(msg.ChatID)
@@ -182,12 +184,21 @@ func (r *Runtime) Send(msg *channels.RuntimeOutboundMessage) error {
 		chatID = strings.TrimSpace(msg.MetadataString("chat_id"))
 	}
 	if chatID == "" {
+		fmt.Println("[wework-runtime] Send failed: chatID is required")
 		return fmt.Errorf("wework runtime: chatID is required for Send")
 	}
-	_, err := cl.SendMarkdown(chatID, msg.Content)
+
+	content := strings.TrimSpace(msg.Content)
+	fmt.Printf("[wework-runtime] Send started, chat_id=%s, content_length=%d, content_preview=%.50s\n",
+		chatID, len(content), content)
+
+	_, err := cl.SendMarkdown(chatID, content)
 	if err != nil {
+		fmt.Printf("[wework-runtime] Send failed: %v\n", err)
 		return fmt.Errorf("wework runtime: send markdown: %w", err)
 	}
+
+	fmt.Printf("[wework-runtime] Message sent successfully, chat_id=%s\n", chatID)
 	return nil
 }
 

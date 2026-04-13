@@ -146,6 +146,7 @@ func (r *Runtime) RuntimeStatus() channels.RuntimeStatus {
 // 当前实现仅支持文本与图片的基础发送，可按需扩展。
 func (r *Runtime) Send(msg *channels.RuntimeOutboundMessage) error {
 	if msg == nil {
+		fmt.Println(runtimeLoggerKey, "Send called with nil message")
 		return nil
 	}
 
@@ -157,8 +158,13 @@ func (r *Runtime) Send(msg *channels.RuntimeOutboundMessage) error {
 		chatID = msg.MetadataString("receiveId")
 	}
 	if chatID == "" {
+		fmt.Println(runtimeLoggerKey, "Send failed: chatId is required")
 		return fmt.Errorf("feishu runtime: chatId is required for Send")
 	}
+
+	content := strings.TrimSpace(msg.Content)
+	fmt.Printf("%s Feishu Send started, chat_id=%s, content_length=%d, content_preview=%.50s\n",
+		runtimeLoggerKey, chatID, len(content), content)
 
 	// 判断接收者类型
 	receiveIDType := larkim.ReceiveIdTypeChatId
@@ -170,6 +176,7 @@ func (r *Runtime) Send(msg *channels.RuntimeOutboundMessage) error {
 	rootMessageID := msg.ReplyToID
 
 	var err error
+	var sent bool
 
 	// 优先发送图片媒体
 	if len(msg.Media) > 0 {
@@ -177,17 +184,26 @@ func (r *Runtime) Send(msg *channels.RuntimeOutboundMessage) error {
 			if m.Type == "image" {
 				if err = r.sendImageMessage(chatID, m, receiveIDType, rootMessageID); err != nil {
 					fmt.Println(runtimeLoggerKey, "failed to send image message:", err)
+				} else {
+					sent = true
 				}
 			}
 		}
 	}
 
 	// 文本内容通过交互式卡片发送（plain_text 避免 markdown table 限制）
-	content := strings.TrimSpace(msg.Content)
 	if content != "" {
 		if err = r.sendCardMessage(chatID, content, receiveIDType, header, rootMessageID); err != nil {
 			fmt.Println(runtimeLoggerKey, "failed to send card message:", err)
+			return fmt.Errorf("feishu runtime: failed to send card message: %w", err)
 		}
+		sent = true
+	}
+
+	if sent {
+		fmt.Printf("%s Feishu message sent successfully, chat_id=%s\n", runtimeLoggerKey, chatID)
+	} else {
+		fmt.Printf("%s Feishu Send: nothing to send (no text or media), chat_id=%s\n", runtimeLoggerKey, chatID)
 	}
 
 	return err

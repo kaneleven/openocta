@@ -234,6 +234,16 @@ func NewServer(addr string, version string) *Server {
 
 	ctx.HooksWake = func(text string, mode string) {
 		enqueueSystemEvent(text)
+		// 同时将系统事件写入主会话，使其在 Web 界面可见
+		if strings.TrimSpace(text) != "" {
+			go func(eventText string) {
+				handlers.InvokeChatSend(ctx, handlers.ChatSendParams{
+					SessionKey:     mainKey,
+					Message:        "[系统事件] " + eventText,
+					IdempotencyKey: uuid.New().String(),
+				})
+			}(text)
+		}
 		if mode == "now" {
 			requestHeartbeatNow("hook:wake")
 		}

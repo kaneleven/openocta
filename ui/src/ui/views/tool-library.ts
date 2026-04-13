@@ -286,13 +286,17 @@ function renderToolDetailActions(
   `;
 }
 
-function renderToolMeta(item: McpListItem | McpDetail) {
+function renderToolMeta(item: McpListItem | McpDetail, currentCategory?: string) {
   const tags = splitCsv(item.tags);
   const status = statusLabel(item.status);
+  const itemCategory = normalizeCategory(item.category);
+  // 单分类页面：隐藏与当前分类同名的标签，避免冗余
+  const isInSingleCategoryView = currentCategory && currentCategory !== "__all__";
+  const shouldHideCategoryTag = isInSingleCategoryView && itemCategory === currentCategory;
   return html`
     <div class="market-card-meta">
-      ${(item.category ?? "").trim()
-        ? html`<span class="market-card-chip market-card-chip--muted">${normalizeCategory(item.category)}</span>`
+      ${(item.category ?? "").trim() && !shouldHideCategoryTag
+        ? html`<span class="market-card-chip market-card-chip--muted">${itemCategory}</span>`
         : nothing}
       ${status ? html`<span class="market-card-chip">${status}</span>` : nothing}
       ${tags.slice(0, 3).map((t) => html`<span class="market-card-chip">${t}</span>`)}
@@ -525,7 +529,7 @@ export function renderToolLibrary(props: ToolLibraryProps) {
                                     </div>
                                     <h3 class="emp-card__title">${it.name}</h3>
                                     <p class="emp-card__desc">${it.description ?? "暂无描述"}</p>
-                                    ${renderToolMeta(it)}
+                                    ${renderToolMeta(it, effectiveCategory)}
                                   </div>
                                 </div>
                               `;
@@ -573,7 +577,7 @@ export function renderToolLibrary(props: ToolLibraryProps) {
                                                   </div>
                                                   <h3 class="emp-card__title">${it.name}</h3>
                                                   <p class="emp-card__desc">${it.description ?? "暂无描述"}</p>
-                                                  ${renderToolMeta(it)}
+                                                  ${renderToolMeta(it, effectiveCategory)}
                                                 </div>
                                               </div>
                                             `;

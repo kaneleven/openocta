@@ -98,9 +98,11 @@ func (r *Runtime) Stop() error {
 // Send 使用 sessionWebhook 将消息发送到钉钉。
 func (r *Runtime) Send(msg *channels.RuntimeOutboundMessage) error {
 	if msg == nil {
+		r.logger.Debug("Send called with nil message")
 		return nil
 	}
 	if !r.BaseRuntimeImpl.IsRunning() {
+		r.logger.Error("Send failed: runtime not running")
 		return fmt.Errorf("dingtalk runtime: not running")
 	}
 
@@ -109,22 +111,35 @@ func (r *Runtime) Send(msg *channels.RuntimeOutboundMessage) error {
 		chatID = msg.MetadataString("chat_id")
 	}
 	if chatID == "" {
+		r.logger.Error("Send failed: chatID is required")
 		return fmt.Errorf("dingtalk runtime: chatID is required for Send")
 	}
+
+	content := strings.TrimSpace(msg.Content)
+	r.logger.Info("DingTalk Send started, chat_id=%s, content_length=%d, content_preview=%.50s",
+		chatID, len(content), content)
 
 	// 根据 chatID 获取 sessionWebhook
 	raw, ok := r.sessionWebhooks.Load(chatID)
 	if !ok {
+		r.logger.Error("Send failed: no session_webhook found for chat %s", chatID)
 		return fmt.Errorf("dingtalk runtime: no session_webhook found for chat %s", chatID)
 	}
 	sessionWebhook, ok := raw.(string)
 	if !ok || sessionWebhook == "" {
+		r.logger.Error("Send failed: invalid session_webhook for chat %s", chatID)
 		return fmt.Errorf("dingtalk runtime: invalid session_webhook for chat %s", chatID)
 	}
 
-	r.logger.Info("DingTalk message to send, chat_id=%s, content_length=%d", chatID, len(msg.Content))
+	r.logger.Info("DingTalk message to send, chat_id=%s, content_length=%d", chatID, len(content))
 
-	return r.sendDirectReply(sessionWebhook, msg.Content)
+	if err := r.sendDirectReply(sessionWebhook, content); err != nil {
+		r.logger.Error("Send failed: %v", err)
+		return err
+	}
+
+	r.logger.Info("DingTalk message sent successfully, chat_id=%s", chatID)
+	return nil
 }
 
 // SendStream：钉钉不支持真正的流式消息，仅聚合最终输出片段后一次性发送（与 QQ 一致）。

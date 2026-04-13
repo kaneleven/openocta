@@ -160,7 +160,10 @@ func deliverAssistantToIM(ctx *Context, deliver *DeliverContext, plainText strin
 			outMsg.Metadata[k] = v
 		}
 	}
-	_ = rt.Send(outMsg)
+	if err := rt.Send(outMsg); err != nil {
+		chatLog.Error("failed to deliver message to IM channel=%s chatID=%s error=%v",
+			deliver.Channel, deliver.To, err)
+	}
 }
 
 // extractAssistantTextFromMessage 从 message body 中提取 assistant 文本内容（完整拼接非工具块文本，供转写等）。
@@ -1495,7 +1498,17 @@ func ChatSendHandler(opts HandlerOpts) error {
 			}
 			// 流式正常结束：只向 IM 发送一条，内容为多次 MessageStop 中最后一次非空的「最终可见」摘录（与钉钉/企微/飞书同一逻辑）。
 			if ctx.Err() == nil {
-				deliverAssistantToIM(ctxForBroadcast, deliverForGoroutine, streamIMPlain)
+				// 兜底逻辑：如果 streamIMPlain 为空（如只有工具调用无文本回复），使用 lastAssistantContent
+				textToSend := streamIMPlain
+				if strings.TrimSpace(textToSend) == "" && lastAssistantContent != "" {
+					textToSend = lastAssistantContent
+					chatLog.Debug("streamIMPlain empty, fallback to lastAssistantContent sessionKey=%s", sessionKey)
+				}
+				if strings.TrimSpace(textToSend) != "" {
+					deliverAssistantToIM(ctxForBroadcast, deliverForGoroutine, textToSend)
+				} else {
+					chatLog.Warn("IM delivery skipped: no content to deliver sessionKey=%s", sessionKey)
+				}
 			}
 			if cronSession {
 				durationMs := time.Since(runStart).Milliseconds()
