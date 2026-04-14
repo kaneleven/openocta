@@ -687,7 +687,6 @@ function renderSkillEditorModal(props: SkillLibraryProps) {
   const saving = props.skillEditSaving ?? false;
   const error = props.skillEditError;
   const syntaxError = props.skillEditSyntaxError;
-  const hasChanges = content !== (props.skillEditContent ?? "");
   const canSave = selectedFile && !loading && !saving;
 
   return html`
