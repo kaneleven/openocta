@@ -730,6 +730,7 @@ function renderFileTree(
                 style="
                   padding: 3px 8px 3px ${paddingLeft}px;
                   font-size: 13px;
+                  line-height: 1.6;
                   cursor: pointer;
                   user-select: none;
                   color: var(--text-main);
@@ -763,8 +764,11 @@ function renderFileTree(
           <div
             style="
               padding: 3px 8px 3px ${paddingLeft}px;
+              margin: 0 4px;
+              border-radius: 3px;
               cursor: pointer;
               font-size: 13px;
+              line-height: 1.6;
               font-family: var(--mono);
               white-space: nowrap;
               overflow: hidden;
@@ -834,7 +838,7 @@ function renderSkillEditorModal(props: SkillLibraryProps) {
           <!-- File tree -->
           <div
             style="
-              width: 180px;
+              width: 200px;
               flex-shrink: 0;
               border-right: 1px solid var(--border, #e5e5e5);
               overflow: auto;
@@ -844,21 +848,12 @@ function renderSkillEditorModal(props: SkillLibraryProps) {
           >
             ${loading && visibleFiles.length === 0
               ? html`<div class="muted" style="padding: 8px;">加载中...</div>`
-              : html`
-                  <div style="padding: 8px 0;">
-                    ${renderFileTree(fileTree, selectedFile ?? null, (path) => props.onSkillEditFileSelect?.(path))}
-                  </div>
-                `}
+              : renderFileTree(fileTree, selectedFile ?? null, (path) => props.onSkillEditFileSelect?.(path))}
           </div>
 
           <!-- Editor -->
           <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden;">
-            <div style="padding: 12px 16px; border-bottom: 1px solid var(--border, #e5e5e5); flex-shrink: 0;">
-              <div class="muted" style="font-size: 13px; font-family: var(--mono);">
-                ${selectedFile ?? "请选择左侧文件"}
-              </div>
-            </div>
-            <div style="flex: 1; min-height: 0; position: relative;">
+            <div style="flex: 1; min-height: 0; position: relative; overflow: hidden;">
               ${loading
                 ? html`<div class="muted" style="padding: 24px;">加载中...</div>`
                 : html`
@@ -869,7 +864,7 @@ function renderSkillEditorModal(props: SkillLibraryProps) {
                         resize: none;
                         border: none;
                         outline: none;
-                        padding: 16px;
+                        padding: 12px;
                         font-family: var(--mono);
                         font-size: 13px;
                         line-height: 1.6;

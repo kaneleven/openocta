@@ -2261,13 +2261,14 @@ export function renderApp(state: AppViewState) {
                   state.skillLibraryEditError = null;
                   state.skillLibraryEditSyntaxError = null;
                   const files = await listSkillFiles(state, folder);
+                  const visibleFiles = files.filter((f) => !f.split("/").some((part) => part.startsWith(".")));
+                  const defaultFile = visibleFiles.find((f) => f === "SKILL.md") || visibleFiles[0];
                   state.skillLibraryEditFiles = files;
                   state.skillLibraryEditLoading = false;
-                  if (files.length > 0) {
-                    const firstFile = files[0];
-                    state.skillLibraryEditSelectedFile = firstFile;
+                  if (defaultFile) {
+                    state.skillLibraryEditSelectedFile = defaultFile;
                     state.skillLibraryEditLoading = true;
-                    const content = await getSkillFile(state, folder, firstFile);
+                    const content = await getSkillFile(state, folder, defaultFile);
                     state.skillLibraryEditContent = content ?? "";
                     state.skillLibraryEditOriginalContent = content ?? "";
                     state.skillLibraryEditLoading = false;
