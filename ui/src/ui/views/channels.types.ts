@@ -16,6 +16,17 @@ export type ChannelsProps = {
   snapshot: ChannelsStatusSnapshot | null;
   lastError: string | null;
   lastSuccessAt: number | null;
+  /** 本地已配置的数字员工列表（用于渠道配置下拉选择） */
+  digitalEmployees?: Array<{
+    id: string;
+    name?: string;
+    enabled?: boolean;
+    builtin?: boolean;
+    from?: string;
+    type?: string;
+  }>;
+  /** 数字员工列表是否仍在加载中（用于避免误判“已删除”提示） */
+  digitalEmployeesLoading?: boolean;
   whatsappMessage: string | null;
   whatsappQrDataUrl: string | null;
   whatsappConnected: boolean | null;

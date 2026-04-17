@@ -11,6 +11,21 @@ import (
 	"github.com/openocta/openocta/pkg/installmetadata"
 )
 
+func normalizeEmployeeID(raw string) string {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return ""
+	}
+	// 兼容目录/市场层 local:<id>
+	if strings.HasPrefix(strings.ToLower(s), "local:") {
+		s = s[len("local:"):]
+	}
+	s = strings.TrimSpace(s)
+	// employee 会话 key 以 ":" 分隔，id 中不应包含冒号；这里做最小兼容。
+	s = strings.ReplaceAll(s, ":", "-")
+	return s
+}
+
 // EmployeesListHandler 处理 "employees.list"：返回所有数字员工模板（内置 + 用户自建）。
 func EmployeesListHandler(opts HandlerOpts) error {
 	env := func(k string) string { return os.Getenv(k) }
@@ -31,7 +46,7 @@ func EmployeesListHandler(opts HandlerOpts) error {
 // EmployeesGetHandler 处理 "employees.get"：根据 id 返回单个数字员工 manifest。
 func EmployeesGetHandler(opts HandlerOpts) error {
 	rawID, _ := opts.Params["id"].(string)
-	id := rawID
+	id := normalizeEmployeeID(rawID)
 	env := func(k string) string { return os.Getenv(k) }
 	m, err := employees.LoadManifest(id, env)
 	if err != nil {
@@ -76,7 +91,7 @@ func EmployeesCreateHandler(opts HandlerOpts) error {
 	}
 
 	env := func(k string) string { return os.Getenv(k) }
-	id := strings.TrimSpace(rawID)
+	id := normalizeEmployeeID(rawID)
 	if id == "" {
 		id = deriveEmployeeIDFromName(name)
 	}
@@ -155,7 +170,7 @@ func EmployeesCreateHandler(opts HandlerOpts) error {
 // EmployeesDeleteHandler 处理 "employees.delete"：删除用户自建数字员工及其关联会话。
 func EmployeesDeleteHandler(opts HandlerOpts) error {
 	rawID, _ := opts.Params["id"].(string)
-	id := strings.TrimSpace(rawID)
+	id := normalizeEmployeeID(rawID)
 	if id == "" {
 		opts.Respond(false, nil, &protocol.ErrorShape{
 			Code:    protocol.ErrCodeInvalidRequest,

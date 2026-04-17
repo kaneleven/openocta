@@ -20,6 +20,10 @@ export type CronProps = {
   busy: boolean;
   form: CronFormState;
   addModalOpen: boolean;
+  editModalOpen?: boolean;
+  editJobId?: string | null;
+  digitalEmployees?: Array<{ id: string; name?: string; enabled?: boolean }>;
+  digitalEmployeesLoading?: boolean;
   channels: string[];
   channelLabels?: Record<string, string>;
   channelMeta?: ChannelUiMetaEntry[];
@@ -30,6 +34,9 @@ export type CronProps = {
   onOpenAddModal: () => void;
   onCloseAddModal: () => void;
   onAdd: () => void;
+  onOpenEditModal?: (job: CronJob) => void;
+  onCloseEditModal?: () => void;
+  onUpdate?: (jobId: string) => void;
   onToggle: (job: CronJob, enabled: boolean) => void;
   onRun: (job: CronJob) => void;
   onRemove: (job: CronJob) => void;
@@ -37,6 +44,16 @@ export type CronProps = {
   onLoadRuns: (jobId: string) => void;
   onShowHistory?: (jobId: string) => void;
 };
+
+function normalizeEmployeeIdForCron(raw: string): string {
+  let s = (raw ?? "").trim();
+  if (!s) return "";
+  if (s.toLowerCase().startsWith("local:")) {
+    s = s.slice("local:".length);
+  }
+  s = s.replaceAll(":", "-");
+  return s.trim().toLowerCase();
+}
 
 function buildChannelOptions(props: CronProps): string[] {
   const options = ["last", ...props.channels.filter(Boolean)];
@@ -117,6 +134,7 @@ export function renderCronConfig(props: CronProps) {
       }
     </section>
     ${props.addModalOpen ? renderCronAddModal(props) : nothing}
+    ${props.editModalOpen && props.editJobId ? renderCronEditModal(props, props.editJobId) : nothing}
   `;
 }
 
@@ -161,8 +179,61 @@ function renderCronAddModal(props: CronProps) {
   `;
 }
 
+function renderCronEditModal(props: CronProps, jobId: string) {
+  return html`
+    <div class="modal-overlay" @click=${props.onCloseEditModal ?? (() => {})}>
+      <div
+        class="modal card emp-detail-modal emp-detail-modal--large cron-config-modal"
+        @click=${(e: Event) => e.stopPropagation()}
+      >
+        <div class="emp-detail-modal__header">
+          <div class="emp-detail-header" style="flex: 1; min-width: 0;">
+            <h1 class="emp-detail-title" style="margin: 0;">编辑定时任务</h1>
+            <div class="emp-detail-summary cron-config-modal__sub">修改后将立即保存到本地任务配置。</div>
+          </div>
+          <button
+            class="emp-detail-modal__close"
+            type="button"
+            aria-label=${t("commonCancel")}
+            @click=${props.onCloseEditModal ?? (() => {})}
+          >
+            ${icons.x}
+          </button>
+        </div>
+        <div class="cron-config-modal__body">
+          ${props.error ? html`<div class="callout danger">${props.error}</div>` : nothing}
+          ${renderCronForm(props)}
+        </div>
+        <div class="modal__actions cron-config-modal__actions">
+          <button class="btn" @click=${props.onCloseEditModal ?? (() => {})}>${t("commonCancel")}</button>
+          <button
+            class="btn primary"
+            ?disabled=${props.busy ||
+            (props.form.payloadKind === "agentTurn" && !props.form.payloadText.trim())}
+            @click=${() => props.onUpdate?.(jobId)}
+          >
+            ${props.busy ? t("commonSaving") : "保存修改"}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderCronForm(props: CronProps) {
   const channelOptions = buildChannelOptions(props);
+  const employeeOptions = (props.digitalEmployees ?? []).slice().sort((a, b) => {
+    const an = (a.name ?? a.id ?? "").toLowerCase();
+    const bn = (b.name ?? b.id ?? "").toLowerCase();
+    return an.localeCompare(bn);
+  });
+  const selectedEmployeeId = normalizeEmployeeIdForCron(props.form.digitalEmployeeId ?? "");
+  const isEditing = !!props.editModalOpen && !!props.editJobId;
+  const selectedEmployee =
+    selectedEmployeeId && employeeOptions.length
+      ? employeeOptions.find((e) => normalizeEmployeeIdForCron(e.id ?? "").toLowerCase() === selectedEmployeeId.toLowerCase())
+      : undefined;
+  const employeeMissing = selectedEmployeeId !== "" && !selectedEmployee && !props.digitalEmployeesLoading;
   return html`
     <div class="form-grid">
       <label class="field">
@@ -190,6 +261,37 @@ function renderCronForm(props: CronProps) {
           placeholder="default"
         /></span>
       </label>
+      <label class="field">
+        <span>数字员工</span>
+        <span class="select"><select
+          @change=${async (e: Event) => {
+            const el = e.target as HTMLSelectElement;
+            const next = normalizeEmployeeIdForCron(el.value ?? "");
+            const prev = normalizeEmployeeIdForCron(props.form.digitalEmployeeId ?? "");
+            if (isEditing && prev && !next) {
+              const ok = await nativeConfirm(
+                `你正在移除该定时任务绑定的数字员工（${prev}）。\n\n移除后：后续触发将不再使用该数字员工会话上下文。\n\n确认移除吗？`,
+              );
+              if (!ok) {
+                el.value = prev;
+                return;
+              }
+            }
+            props.onFormChange({ digitalEmployeeId: next });
+          }}
+        >
+          <option value="" ?selected=${!selectedEmployeeId}>（不选择）</option>
+          ${employeeOptions.map((emp) => {
+            const idNorm = normalizeEmployeeIdForCron(emp.id ?? "");
+            return html`<option value=${idNorm} ?selected=${idNorm === selectedEmployeeId}>${emp.name ? `${emp.name}（${idNorm}）` : idNorm}</option>`;
+          })}
+          ${
+            employeeMissing
+              ? html`<option value=${selectedEmployeeId} ?selected=${true}>—（已删除：${selectedEmployeeId}）</option>`
+              : nothing
+          }
+        </select></span>
+      </label>
       <label class="field checkbox">
         <span>${t("cronEnabled")}</span>
         <span class="checkbox"><input
@@ -214,6 +316,13 @@ function renderCronForm(props: CronProps) {
         </select></span>
       </label>
     </div>
+    ${
+      employeeMissing
+        ? html`<div class="callout danger" style="margin-top: 12px;">
+            该定时任务已配置的数字员工（${selectedEmployeeId}）不存在（可能已被删除）。请将“数字员工”改为有效项或清空后保存。
+          </div>`
+        : nothing
+    }
     ${renderScheduleFields(props)}
     <div class="form-grid" style="margin-top: 12px;">
       <label class="field">
@@ -479,6 +588,7 @@ function renderJob(
         <div class="list-title">${job.name}</div>
         <div class="list-sub">${formatCronSchedule(job)}</div>
         ${renderJobPayload(job)}
+        ${renderJobEmployee(job, props)}
         ${job.agentId ? html`<div class="muted cron-job-agent">Agent: ${job.agentId}</div>` : nothing}
       </div>
       <div class="list-meta">
@@ -493,6 +603,22 @@ function renderJob(
           <span class="chip">${job.wakeMode}</span>
         </div>
         <div class="row cron-job-actions">
+          ${
+            opts.mode === "config"
+              ? html`
+                <button
+                  class="btn"
+                  ?disabled=${props.busy}
+                  @click=${(event: Event) => {
+                    event.stopPropagation();
+                    props.onOpenEditModal?.(job);
+                  }}
+                >
+                  Edit
+                </button>
+              `
+              : nothing
+          }
           <button
             class="btn"
             ?disabled=${props.busy}
@@ -544,6 +670,24 @@ function renderJob(
       </div>
     </div>
   `;
+}
+
+function renderJobEmployee(job: CronJob, props: CronProps) {
+  const raw = normalizeEmployeeIdForCron(job.digitalEmployeeId ?? "");
+  if (!raw) return nothing;
+  const list = props.digitalEmployees ?? [];
+  const hit = list.find((e) => normalizeEmployeeIdForCron(e.id ?? "").toLowerCase() === raw.toLowerCase());
+  if (!hit) {
+    return html`<div class="cron-job-detail">
+      <span class="cron-job-detail-label">数字员工</span>
+      <span class="muted cron-job-detail-value">—（已删除：${raw}，建议移除该配置）</span>
+    </div>`;
+  }
+  const label = hit.name ? `${hit.name}（${raw}）` : raw;
+  return html`<div class="cron-job-detail">
+    <span class="cron-job-detail-label">数字员工</span>
+    <span class="muted cron-job-detail-value">${label}</span>
+  </div>`;
 }
 
 function renderJobPayload(job: CronJob) {

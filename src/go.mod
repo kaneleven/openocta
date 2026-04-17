@@ -18,6 +18,7 @@ require (
 	github.com/wailsapp/wails/v2 v2.11.0
 	golang.org/x/oauth2 v0.34.0
 	golang.org/x/sys v0.40.0
+	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.46.1
 )
 
@@ -107,13 +108,12 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/grpc v1.78.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/libc v1.67.6 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
 
-replace github.com/stellarlinkco/agentsdk-go => github.com/zhanbei1/agentsdk-go v1.0.3
+replace github.com/stellarlinkco/agentsdk-go => github.com/zhanbei1/agentsdk-go v1.0.4
 
 // 使用 zhanbei1 fork（含扫码创建机器人 HTTP 与 aibot 包，module 路径仍为 go-sphere）
 replace github.com/go-sphere/wecom-aibot-go-sdk => github.com/zhanbei1/wecom-aibot-go-sdk v0.0.2

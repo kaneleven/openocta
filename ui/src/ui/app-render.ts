@@ -7,6 +7,7 @@ import { syncUrlWithSessionKey } from "./app-settings.ts";
 import { renderChatControls, renderTab } from "./app-render.helpers.ts";
 import { loadChannels } from "./controllers/channels.ts";
 import { loadChatHistory } from "./controllers/chat.ts";
+import { loadDigitalEmployees } from "./controllers/digital-employees.ts";
 import { applyConfig, loadConfig, runUpdate, saveConfig, saveConfigPatch, updateConfigFormValue, removeConfigFormValue } from "./controllers/config.ts";
 import {
   loadCronRuns,
@@ -14,6 +15,8 @@ import {
   runCronJob,
   removeCronJob,
   addCronJob,
+  cronFormFromJob,
+  updateCronJob,
 } from "./controllers/cron.ts";
 import { loadDebug, callDebugMethod } from "./controllers/debug.ts";
 import {
@@ -1209,6 +1212,8 @@ export function renderApp(state: AppViewState) {
                 snapshot: state.channelsSnapshot,
                 lastError: state.channelsError,
                 lastSuccessAt: state.channelsLastSuccess,
+                digitalEmployees: state.digitalEmployees,
+                digitalEmployeesLoading: state.digitalEmployeesLoading,
                 whatsappMessage: state.whatsappLoginMessage,
                 whatsappQrDataUrl: state.whatsappLoginQrDataUrl,
                 whatsappConnected: state.whatsappLoginConnected,
@@ -1242,6 +1247,10 @@ export function renderApp(state: AppViewState) {
                 onRefresh: (probe) => loadChannels(state, probe),
                 onChannelSelect: (channelId) => {
                   state.channelsSelectedChannelId = channelId;
+                  // 进入渠道配置面板时，确保数字员工列表已加载（避免误判“已删除”）。
+                  if (channelId && !state.digitalEmployeesLoading && (state.digitalEmployees?.length ?? 0) === 0) {
+                    void loadDigitalEmployees(state);
+                  }
                 },
                 onWhatsAppStart: (force) => state.handleWhatsAppStart(force),
                 onWhatsAppWait: () => state.handleWhatsAppWait(),
@@ -1602,6 +1611,10 @@ export function renderApp(state: AppViewState) {
                 busy: state.cronBusy,
                 form: state.cronForm,
                 addModalOpen: state.cronAddModalOpen,
+                editModalOpen: state.cronEditModalOpen,
+                editJobId: state.cronEditJobId,
+                digitalEmployees: state.digitalEmployees,
+                digitalEmployeesLoading: state.digitalEmployeesLoading,
                 channels: state.channelsSnapshot?.channelMeta?.length
                   ? state.channelsSnapshot.channelMeta.map((entry) => entry.id)
                   : (state.channelsSnapshot?.channelOrder ?? []),
@@ -1613,10 +1626,30 @@ export function renderApp(state: AppViewState) {
                 onRefresh: () => state.loadCron(),
                 onOpenAddModal: () => (state.cronAddModalOpen = true),
                 onCloseAddModal: () => (state.cronAddModalOpen = false),
+                onOpenEditModal: (job) => {
+                  state.cronForm = cronFormFromJob(job, state.cronForm);
+                  state.cronEditJobId = job.id;
+                  state.cronEditModalOpen = true;
+                  // 进入编辑时，兜底确保数字员工列表已加载（避免误判“已删除”）。
+                  if (!state.digitalEmployeesLoading) {
+                    void loadDigitalEmployees(state);
+                  }
+                },
+                onCloseEditModal: () => {
+                  state.cronEditModalOpen = false;
+                  state.cronEditJobId = null;
+                },
                 onAdd: async () => {
                   await addCronJob(state);
                   if (!state.cronError) {
                     state.cronAddModalOpen = false;
+                  }
+                },
+                onUpdate: async (jobId) => {
+                  await updateCronJob(state, jobId);
+                  if (!state.cronError) {
+                    state.cronEditModalOpen = false;
+                    state.cronEditJobId = null;
                   }
                 },
                 onToggle: (job, enabled) => toggleCronJob(state, job, enabled),
@@ -1642,6 +1675,8 @@ export function renderApp(state: AppViewState) {
                 error: state.cronError,
                 busy: state.cronBusy,
                 form: state.cronForm,
+                digitalEmployees: state.digitalEmployees,
+                digitalEmployeesLoading: state.digitalEmployeesLoading,
                 channels: state.channelsSnapshot?.channelMeta?.length
                   ? state.channelsSnapshot.channelMeta.map((entry) => entry.id)
                   : (state.channelsSnapshot?.channelOrder ?? []),

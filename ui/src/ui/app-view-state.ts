@@ -228,6 +228,8 @@ export type AppViewState = {
   cronRuns: CronRunLogEntry[];
   cronBusy: boolean;
   cronAddModalOpen: boolean;
+  cronEditModalOpen: boolean;
+  cronEditJobId: string | null;
   skillsLoading: boolean;
   skillsReport: SkillStatusReport | null;
   skillsError: string | null;

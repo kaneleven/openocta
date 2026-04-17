@@ -67,8 +67,23 @@ func New(ctx context.Context, opts Options) (*Runtime, error) {
 	if opts.TokenLimit > 0 {
 		apiOpts.TokenLimit = opts.TokenLimit
 	}
+	// SDK 内部优化（见 agentsdk-go/docs/SDK-OPTIMIZATIONS.md）：
+	// 1) 结构化反思（Reflection）：把失败原因写入 middleware.State.Values["reflection.records"]
+	// 2) 工具输出落盘（ToolOutput）：OutputPersister 负责把过长输出落盘并在 history 中保留引用+摘要
+	{
+		v := true
+		apiOpts.ReflectionEnabled = &v
+	}
 	if apiOpts.SettingsOverrides == nil {
 		apiOpts.SettingsOverrides = &agentsdkConfg.Settings{}
+	}
+	// toolOutput 默认阈值（bytes）。SDK 默认 64KB；这里下调以更积极地避免 history 被长输出淹没。
+	// 若你后续希望更精确地按“runes”控制，需要在 agentsdk-go 侧把 DefaultThresholdRunes 暴露到 settings 或 Options。
+	if apiOpts.SettingsOverrides.ToolOutput == nil {
+		apiOpts.SettingsOverrides.ToolOutput = &agentsdkConfg.ToolOutputConfig{}
+	}
+	if apiOpts.SettingsOverrides.ToolOutput.DefaultThresholdBytes <= 0 {
+		apiOpts.SettingsOverrides.ToolOutput.DefaultThresholdBytes = 16 * 1024
 	}
 	// 添加环境变量：1) 写入 SettingsOverrides.Env 供 hooks/settings 使用；2) 写入进程环境供 bash 等工具继承
 	if opts.Config.Env != nil && len(opts.Config.Env.Vars) > 0 {
@@ -339,7 +354,7 @@ type Options struct {
 // mergeSkylarkOptions resolves api.SkylarkOptions: explicit opts.Skylark wins; then OPENOCTA_SKYLARK; then agents.defaults.skylark; default disabled when env unset (see agentsdk-go docs/skylark.md).
 func mergeSkylarkOptions(opts Options) *api.SkylarkOptions {
 	if opts.Skylark != nil {
-		return opts.Skylark
+		return withSkylarkOptimizations(opts.Skylark)
 	}
 	env := opts.Env
 	if env == nil {
@@ -350,10 +365,10 @@ func mergeSkylarkOptions(opts Options) *api.SkylarkOptions {
 		return &api.SkylarkOptions{Enabled: false}
 	}
 	if v == "1" || v == "true" || v == "yes" || v == "on" {
-		return &api.SkylarkOptions{Enabled: true}
+		return withSkylarkOptimizations(&api.SkylarkOptions{Enabled: true})
 	}
 	if o := skylarkFromAgentDefaults(opts.Config); o != nil {
-		return o
+		return withSkylarkOptimizations(o)
 	}
 	return &api.SkylarkOptions{Enabled: false}
 }
@@ -379,6 +394,42 @@ func skylarkFromAgentDefaults(cfg *config.OpenOctaConfig) *api.SkylarkOptions {
 	}
 	if sk.KeepAutoSkills != nil {
 		o.KeepAutoSkills = *sk.KeepAutoSkills
+	}
+	return o
+}
+
+// withSkylarkOptimizations applies agentsdk-go Skylark 的推荐默认参数（仅在启用 Skylark 时生效）。
+// 规则：调用方显式设置的字段优先；这里只在字段“未设置/为空/为0”时填充。
+//
+// 注意：本仓库当前 vendored 的 agentsdk-go SkylarkOptions 仅包含 one-shot routing 与默认 limit 等参数；
+// SDK-OPTIMIZATIONS.md 中提到的 mini-memory / prefetch / L2 project memory 等字段若未来进入 SDK，
+// 再在此处补齐映射即可。
+func withSkylarkOptimizations(o *api.SkylarkOptions) *api.SkylarkOptions {
+	if o == nil {
+		return nil
+	}
+	if !o.Enabled {
+		return o
+	}
+
+	// 默认限制值：SDK 内部也会提供默认值，但这里显式化便于团队统一调参。
+	if o.DefaultKnowledgeLimit == 0 {
+		o.DefaultKnowledgeLimit = 3
+	}
+	if o.DefaultCapabilitiesLimit == 0 {
+		o.DefaultCapabilitiesLimit = 2
+	}
+	if o.DefaultUnlockTopN == 0 {
+		o.DefaultUnlockTopN = 2
+	}
+
+	// 复问/继续类提示：命中这些词时强制 progressive（避免 one-shot 路由导致“复问忘记”）。
+	// 调用方若在配置中提供 ComplexityHints（非空），则尊重调用方，不覆盖。
+	if len(o.ComplexityHints) == 0 {
+		o.ComplexityHints = []string{
+			"继续", "上次", "之前", "再问", "复述", "回顾",
+			"continue", "again", "as before", "previously", "last time",
+		}
 	}
 	return o
 }

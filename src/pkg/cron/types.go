@@ -39,16 +39,19 @@ type CronJobState struct {
 
 // CronJob is a scheduled job.
 type CronJob struct {
-	ID             string       `json:"id"`
-	AgentID        string       `json:"agentId,omitempty"`
-	Name           string       `json:"name"`
-	Description    string       `json:"description,omitempty"`
-	Enabled        bool         `json:"enabled"`
-	DeleteAfterRun bool         `json:"deleteAfterRun,omitempty"`
-	CreatedAtMs    int64        `json:"createdAtMs"`
-	UpdatedAtMs    int64        `json:"updatedAtMs"`
-	Schedule       CronSchedule `json:"schedule"`
-	SessionTarget  string       `json:"sessionTarget"`
+	ID      string `json:"id"`
+	AgentID string `json:"agentId,omitempty"`
+	// DigitalEmployeeID 若设置，则该任务运行时会使用数字员工会话（agent:main:employee:<id>）。
+	// 仅保存员工 id；展示名由前端通过 employees.list 解析。
+	DigitalEmployeeID string       `json:"digitalEmployeeId,omitempty"`
+	Name              string       `json:"name"`
+	Description       string       `json:"description,omitempty"`
+	Enabled           bool         `json:"enabled"`
+	DeleteAfterRun    bool         `json:"deleteAfterRun,omitempty"`
+	CreatedAtMs       int64        `json:"createdAtMs"`
+	UpdatedAtMs       int64        `json:"updatedAtMs"`
+	Schedule          CronSchedule `json:"schedule"`
+	SessionTarget     string       `json:"sessionTarget"`
 	// SessionKey 可选，用于定时调度时复用同一会话。格式：agent:main:cron:<jobId>。
 	// 手动触发时始终生成新 sessionKey（agent:main:cron:<jobId>:run:<sessionId>），忽略此字段。
 	SessionKey string        `json:"sessionKey,omitempty"`

@@ -117,6 +117,8 @@ func CronAddHandler(opts HandlerOpts) error {
 		}, nil)
 		return nil
 	}
+	description, _ := params["description"].(string)
+	agentID, _ := params["agentId"].(string)
 	sched := parseSchedule(params["schedule"])
 	if ok, msg := validateScheduleTimestamp(sched); !ok {
 		opts.Respond(false, nil, &protocol.ErrorShape{
@@ -143,15 +145,22 @@ func CronAddHandler(opts HandlerOpts) error {
 	if v, ok := params["sessionKey"].(string); ok {
 		sessionKey = strings.TrimSpace(v)
 	}
+	digitalEmployeeID := ""
+	if v, ok := params["digitalEmployeeId"].(string); ok {
+		digitalEmployeeID = strings.TrimSpace(v)
+	}
 	j, err := ctx.CronService.Add(cron.JobCreate{
-		Name:          name,
-		Schedule:      sched,
-		Payload:       payload,
-		SessionTarget: sessionTarget,
-		SessionKey:    sessionKey,
-		WakeMode:      wakeMode,
-		Enabled:       enabled,
-		Delivery:      delivery,
+		Name:              name,
+		Description:       description,
+		AgentID:           agentID,
+		Schedule:          sched,
+		Payload:           payload,
+		SessionTarget:     sessionTarget,
+		SessionKey:        sessionKey,
+		DigitalEmployeeID: digitalEmployeeID,
+		WakeMode:          wakeMode,
+		Enabled:           enabled,
+		Delivery:          delivery,
 	})
 	if err != nil {
 		opts.Respond(false, nil, &protocol.ErrorShape{
@@ -220,9 +229,24 @@ func parseSchedule(v interface{}) cron.CronSchedule {
 	}
 	if every, ok := m["everyMs"].(float64); ok {
 		s.EveryMs = int64(every)
+	} else if every, ok := m["everyMs"].(int); ok {
+		s.EveryMs = int64(every)
+	}
+	if anchor, ok := m["anchorMs"].(float64); ok && anchor > 0 {
+		v := int64(anchor)
+		s.AnchorMs = &v
+	} else if anchor, ok := m["anchorMs"].(int64); ok && anchor > 0 {
+		v := anchor
+		s.AnchorMs = &v
+	} else if anchor, ok := m["anchorMs"].(int); ok && anchor > 0 {
+		v := int64(anchor)
+		s.AnchorMs = &v
 	}
 	if expr, ok := m["expr"].(string); ok {
 		s.Expr = expr
+	}
+	if tz, ok := m["tz"].(string); ok {
+		s.Tz = tz
 	}
 	return s
 }
@@ -263,6 +287,14 @@ func CronUpdateHandler(opts HandlerOpts) error {
 		if v, ok := p["name"].(string); ok {
 			patch.Name = v
 		}
+		if v, ok := p["description"].(string); ok {
+			desc := v
+			patch.Description = &desc
+		}
+		if v, ok := p["agentId"].(string); ok {
+			aid := v
+			patch.AgentID = &aid
+		}
 		if s := parseSchedule(p["schedule"]); s.Kind != "" || s.At != "" || s.Expr != "" || s.EveryMs != 0 {
 			if ok2, msg := validateScheduleTimestamp(s); !ok2 {
 				opts.Respond(false, nil, &protocol.ErrorShape{
@@ -273,12 +305,32 @@ func CronUpdateHandler(opts HandlerOpts) error {
 			}
 			patch.Schedule = &s
 		}
+		if rawPayload, ok := p["payload"]; ok && rawPayload != nil {
+			pl := parsePayload(rawPayload)
+			if pl.Kind != "" {
+				patch.Payload = &pl
+			}
+		}
+		if v, ok := p["sessionTarget"].(string); ok && v != "" {
+			st := v
+			patch.SessionTarget = &st
+		}
+		if v, ok := p["wakeMode"].(string); ok && v != "" {
+			wm := v
+			patch.WakeMode = &wm
+		}
 		if d := parseDelivery(p["delivery"]); d != nil {
 			patch.Delivery = d
 		}
 		if v, ok := p["sessionKey"].(string); ok {
 			sk := strings.TrimSpace(v)
 			patch.SessionKey = &sk
+		}
+		if v, ok := p["digitalEmployeeId"].(string); ok {
+			de := strings.TrimSpace(v)
+			patch.DigitalEmployeeID = &de
+		} else if _, exists := p["digitalEmployeeId"]; exists && p["digitalEmployeeId"] == nil {
+			// 显式 null 不修改；保持行为与其他字段一致（此处不做处理）
 		}
 	}
 	j, err := svc.Update(jobID, patch)

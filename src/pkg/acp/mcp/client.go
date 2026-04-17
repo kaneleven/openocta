@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -68,11 +69,60 @@ func ConnectStdio(ctx context.Context, key string, command string, args []string
 	return &Client{key: key, session: session, client: client, cmd: cmd}, nil
 }
 
-// ConnectURL connects to an MCP server at the given URL (SSE). Not implemented in this revision; use stdio only.
+// ConnectURL connects to an MCP server at the given URL.
+// It supports legacy SSE endpoints (commonly ending with /sse) and the newer streamable HTTP transport.
 func ConnectURL(ctx context.Context, key string, url string) (*Client, error) {
-	// SSE client would use mcp.SSEClientTransport; leave for later.
-	_ = url
-	return nil, errSSENotImplemented
+	raw := strings.TrimSpace(url)
+	if raw == "" {
+		return nil, errors.New("mcp: empty url")
+	}
+	u, err := urlpkgParse(raw)
+	if err != nil {
+		return nil, err
+	}
+
+	transport := pickURLTransport(u, raw)
+	client := mcp.NewClient(&mcp.Implementation{Name: "openocta-mcp-client", Version: "0.1.0"}, nil)
+	session, err := client.Connect(ctx, transport, nil)
+	if err != nil {
+		// If transport auto-detection picked streamable and it fails, try SSE as fallback.
+		// This keeps backward-compat with older MCP servers that only expose /sse.
+		if _, ok := transport.(*mcp.StreamableClientTransport); ok {
+			sseTransport := &mcp.SSEClientTransport{Endpoint: raw}
+			session2, err2 := client.Connect(ctx, sseTransport, nil)
+			if err2 == nil {
+				return &Client{key: key, session: session2, client: client}, nil
+			}
+		}
+		return nil, err
+	}
+	return &Client{key: key, session: session, client: client}, nil
+}
+
+// urlpkgParse is a tiny wrapper to keep parsing behavior consistent and errors readable.
+func urlpkgParse(raw string) (*url.URL, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return nil, err
+	}
+	if u == nil || u.Scheme == "" || u.Host == "" {
+		return nil, errors.New("mcp: invalid url (expected http/https)")
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return nil, errors.New("mcp: unsupported url scheme (expected http/https)")
+	}
+	return u, nil
+}
+
+func pickURLTransport(u *url.URL, raw string) mcp.Transport {
+	// Heuristic:
+	// - If the URL looks like an SSE endpoint (common: /sse), use legacy SSE transport.
+	// - Otherwise prefer streamable HTTP transport (newer spec).
+	path := strings.ToLower(strings.TrimSpace(u.Path))
+	if path == "/sse" || strings.HasSuffix(path, "/sse") {
+		return &mcp.SSEClientTransport{Endpoint: raw}
+	}
+	return &mcp.StreamableClientTransport{Endpoint: raw}
 }
 
 // ListTools returns tools from the MCP server.

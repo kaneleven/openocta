@@ -209,12 +209,16 @@ export async function refreshActiveTab(host: SettingsHost) {
   }
   if (host.tab === "cron") {
     await loadCron(host);
+    // Cron 配置需要数字员工列表用于下拉选择/校验。这里 await，避免编辑时误判“已删除”。
+    await loadDigitalEmployees(host as unknown as Parameters<typeof loadDigitalEmployees>[0]);
   }
   if (host.tab === "scheduledTasks") {
     await loadCron(host);
+    await loadDigitalEmployees(host as unknown as Parameters<typeof loadDigitalEmployees>[0]);
   }
   if (host.tab === "cronHistory") {
     await loadCron(host);
+    await loadDigitalEmployees(host as unknown as Parameters<typeof loadDigitalEmployees>[0]);
   }
   if (host.tab === "skills") {
     await loadSkills(host as unknown as OpenClawApp);

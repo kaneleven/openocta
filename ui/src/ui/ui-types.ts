@@ -21,6 +21,7 @@ export type CronFormState = {
   name: string;
   description: string;
   agentId: string;
+  digitalEmployeeId: string;
   enabled: boolean;
   scheduleKind: "at" | "every" | "cron";
   scheduleAt: string;

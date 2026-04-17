@@ -416,6 +416,8 @@ export class OpenClawApp extends LitElement implements NativeDialogInvoker {
   @state() cronRuns: CronRunLogEntry[] = [];
   @state() cronBusy = false;
   @state() cronAddModalOpen = false;
+  @state() cronEditModalOpen = false;
+  @state() cronEditJobId: string | null = null;
 
   @state() skillsLoading = false;
   @state() skillsReport: SkillStatusReport | null = null;

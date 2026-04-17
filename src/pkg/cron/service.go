@@ -20,6 +20,18 @@ type Service struct {
 	done      chan struct{}
 }
 
+func normalizeDigitalEmployeeID(raw string) string {
+	s := strings.TrimSpace(strings.ToLower(raw))
+	if s == "" {
+		return ""
+	}
+	// 兼容 UI/目录层 local:<id>：cron 存储与会话 key 一律使用去前缀后的稳定 id。
+	s = strings.TrimPrefix(s, "local:")
+	// employee 会话 key 以 ":" 分隔，id 内不能包含冒号
+	s = strings.ReplaceAll(s, ":", "-")
+	return strings.TrimSpace(s)
+}
+
 // cronRunLogEntry mirrors the TS CronRunLogEntry used by the control UI run history.
 type cronRunLogEntry struct {
 	Ts          int64  `json:"ts"`
@@ -116,13 +128,17 @@ func (s *Service) List(includeDisabled bool) ([]CronJob, error) {
 // JobCreate is the input for adding a job.
 type JobCreate struct {
 	Name          string
+	Description   string
+	AgentID       string
 	Schedule      CronSchedule
 	Payload       CronPayload
 	SessionTarget string
 	SessionKey    string // 定时调度时使用的 sessionKey，格式 agent:main:cron:<jobId>
-	WakeMode      string
-	Enabled       bool
-	Delivery      *CronDelivery
+	// DigitalEmployeeID 选择的数字员工 id（可选）
+	DigitalEmployeeID string
+	WakeMode          string
+	Enabled           bool
+	Delivery          *CronDelivery
 }
 
 // Add adds a new job.
@@ -132,17 +148,20 @@ func (s *Service) Add(input JobCreate) (CronJob, error) {
 	now := time.Now().UnixMilli()
 	next := ComputeNextRunAtMs(input.Schedule, now)
 	j := CronJob{
-		ID:            uuid.New().String(),
-		Name:          input.Name,
-		Enabled:       input.Enabled,
-		CreatedAtMs:   now,
-		UpdatedAtMs:   now,
-		Schedule:      input.Schedule,
-		SessionTarget: input.SessionTarget,
-		SessionKey:    strings.TrimSpace(input.SessionKey),
-		WakeMode:      input.WakeMode,
-		Payload:       input.Payload,
-		Delivery:      input.Delivery,
+		ID:                uuid.New().String(),
+		AgentID:           strings.TrimSpace(strings.ToLower(input.AgentID)),
+		Name:              input.Name,
+		Description:       strings.TrimSpace(input.Description),
+		DigitalEmployeeID: normalizeDigitalEmployeeID(input.DigitalEmployeeID),
+		Enabled:           input.Enabled,
+		CreatedAtMs:       now,
+		UpdatedAtMs:       now,
+		Schedule:          input.Schedule,
+		SessionTarget:     input.SessionTarget,
+		SessionKey:        strings.TrimSpace(input.SessionKey),
+		WakeMode:          input.WakeMode,
+		Payload:           input.Payload,
+		Delivery:          input.Delivery,
 		State: CronJobState{
 			NextRunAtMs: &next,
 		},
@@ -159,11 +178,17 @@ func (s *Service) Add(input JobCreate) (CronJob, error) {
 
 // JobPatch is a partial update for a job.
 type JobPatch struct {
-	Enabled    *bool
-	Name       string
-	Schedule   *CronSchedule
-	SessionKey *string // 定时调度时使用的 sessionKey，nil 表示不修改
-	Delivery   *CronDelivery
+	Enabled           *bool
+	Name              string
+	Description       *string
+	AgentID           *string
+	Schedule          *CronSchedule
+	SessionKey        *string // 定时调度时使用的 sessionKey，nil 表示不修改
+	DigitalEmployeeID *string // 数字员工 id，nil 表示不修改；空字符串表示清空
+	SessionTarget     *string
+	WakeMode          *string
+	Payload           *CronPayload
+	Delivery          *CronDelivery
 }
 
 // GetJob returns a copy of the job by ID, or false if not found.
@@ -190,11 +215,29 @@ func (s *Service) Update(id string, patch JobPatch) (CronJob, error) {
 			if patch.Name != "" {
 				s.store.Jobs[i].Name = patch.Name
 			}
+			if patch.Description != nil {
+				s.store.Jobs[i].Description = strings.TrimSpace(*patch.Description)
+			}
+			if patch.AgentID != nil {
+				s.store.Jobs[i].AgentID = strings.TrimSpace(strings.ToLower(*patch.AgentID))
+			}
 			if patch.Schedule != nil {
 				s.store.Jobs[i].Schedule = *patch.Schedule
 			}
+			if patch.Payload != nil {
+				s.store.Jobs[i].Payload = *patch.Payload
+			}
+			if patch.SessionTarget != nil {
+				s.store.Jobs[i].SessionTarget = strings.TrimSpace(*patch.SessionTarget)
+			}
+			if patch.WakeMode != nil {
+				s.store.Jobs[i].WakeMode = strings.TrimSpace(*patch.WakeMode)
+			}
 			if patch.Delivery != nil {
 				s.store.Jobs[i].Delivery = patch.Delivery
+			}
+			if patch.DigitalEmployeeID != nil {
+				s.store.Jobs[i].DigitalEmployeeID = normalizeDigitalEmployeeID(*patch.DigitalEmployeeID)
 			}
 			if patch.SessionKey != nil {
 				s.store.Jobs[i].SessionKey = strings.TrimSpace(*patch.SessionKey)
@@ -256,17 +299,25 @@ func (s *Service) Run(id string, mode string) error {
 			status = "skipped"
 			errMsg = `isolated job requires payload.kind="agentTurn"`
 		} else {
-			// 手动触发（mode=force）：生成新 sessionKey agent:main:cron:<jobId>:run:<sessionId>
-			// 定时调度（mode=due）：使用 jobs.json 中的 sessionKey，缺省为 agent:main:cron:<jobId>
-			if mode == "force" {
-				cronSessionID = uuid.New().String()
-				sessionKey = "agent:main:cron:" + jobCopy.ID + ":run:" + cronSessionID
+			// 若选择了数字员工，则优先使用数字员工稳定会话 key：
+			// agent:main:employee:<employeeId>
+			// 并让网关通过 sessions.ensure / sessions store 解析 sessionId（首次会话也能自动构建）。
+			if emp := strings.TrimSpace(strings.ToLower(jobCopy.DigitalEmployeeID)); emp != "" {
+				sessionKey = "agent:main:employee:" + emp
+				cronSessionID = ""
 			} else {
-				sessionKey = strings.TrimSpace(jobCopy.SessionKey)
-				if sessionKey == "" {
-					sessionKey = "agent:main:cron:" + jobCopy.ID
+				// 手动触发（mode=force）：生成新 sessionKey agent:main:cron:<jobId>:run:<sessionId>
+				// 定时调度（mode=due）：使用 jobs.json 中的 sessionKey，缺省为 agent:main:cron:<jobId>
+				if mode == "force" {
+					cronSessionID = uuid.New().String()
+					sessionKey = "agent:main:cron:" + jobCopy.ID + ":run:" + cronSessionID
+				} else {
+					sessionKey = strings.TrimSpace(jobCopy.SessionKey)
+					if sessionKey == "" {
+						sessionKey = "agent:main:cron:" + jobCopy.ID
+					}
+					cronSessionID = jobCopy.ID
 				}
-				cronSessionID = jobCopy.ID
 			}
 		}
 	}

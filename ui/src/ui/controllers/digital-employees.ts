@@ -7,6 +7,8 @@ type EmployeesListResult = {
     name: string;
     description: string;
     builtin: boolean;
+    from?: string;
+    type?: string;
     prompt?: string;
     enabled?: boolean;
     createdAt?: number;

@@ -41,6 +41,11 @@ var resetCommandRe = regexp.MustCompile(`(?i)^(?:/|!)(?:new|reset)(?:\s+([\s\S]*
 // Aligns with openclaw BARE_SESSION_RESET_PROMPT: greet user and ask what they want to do.
 const BARE_SESSION_RESET_PROMPT = "当前已通过 /new 或 /reset 开启新会话。请以你配置的人设（如有）向用户打招呼，保持你的语气、风格和情绪。用 1～3 句话问候并询问用户想做什么。若当前运行模型与系统提示中的 default_model 不同，可简要说明。不要提及内部步骤、文件、工具或推理过程。"
 
+// agentRunSeqMu protects Context.AgentRunSeq from concurrent access.
+// Chat runs are executed in goroutines and broadcast functions call nextChatSeq
+// concurrently; plain Go maps would panic ("concurrent map writes") without a lock.
+var agentRunSeqMu sync.Mutex
+
 // ChatAbortController tracks an active chat run for cancellation.
 type ChatAbortController struct {
 	Controller  context.CancelFunc
@@ -59,6 +64,8 @@ func nextChatSeq(agentRunSeq map[string]int64, runId string) int64 {
 	if agentRunSeq == nil {
 		return 0
 	}
+	agentRunSeqMu.Lock()
+	defer agentRunSeqMu.Unlock()
 	seq := agentRunSeq[runId]
 	seq++
 	agentRunSeq[runId] = seq

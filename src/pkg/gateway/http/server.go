@@ -294,7 +294,13 @@ func NewServer(addr string, version string) *Server {
 				if sessionKey == "" {
 					sessionKey = "agent:main:cron:" + job.ID
 				}
-				if sessionId == "" {
+				// 对数字员工会话，先确保 sessions.json 中有条目（首次对话构建 sessionId）。
+				// 同时不强制传 sessionId，让 chat.send 走 ResolveChatSessionID 从 store 解析。
+				lowerKey := strings.TrimSpace(strings.ToLower(sessionKey))
+				if strings.HasPrefix(lowerKey, "agent:") && strings.Contains(lowerKey, ":employee:") && !strings.Contains(lowerKey, ":run:") {
+					_, _, _ = ctx.InvokeMethod("sessions.ensure", map[string]interface{}{"key": sessionKey})
+					sessionId = ""
+				} else if sessionId == "" {
 					sessionId = job.ID
 				}
 				handlers.InvokeChatSend(ctx, handlers.ChatSendParams{
