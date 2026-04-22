@@ -623,9 +623,12 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
                                 const cat = normalizeCategory(sel.categoryCn);
                                 const hideDetailCategory = activeCategory && activeCategory !== "__all__" && cat === activeCategory;
                                 const tags = splitCsv(sel.tags);
-                                const visibleTags = activeCategory && activeCategory !== "__all__"
-                                  ? tags.filter((t) => t !== activeCategory)
-                                  : tags;
+                                const visibleTags = tags.filter((t) => {
+                                  const nt = normalizeCategory(t);
+                                  if (nt === cat) return false;
+                                  if (activeCategory && activeCategory !== "__all__" && nt === activeCategory) return false;
+                                  return true;
+                                });
                                 return html`
                                   ${cat && !hideDetailCategory ? html`<span class="badge ghost">${cat}</span>` : nothing}
                                   ${visibleTags.map((t) => html`<span class="badge ghost">${t}</span>`)}
