@@ -48,6 +48,7 @@ export type EmployeeListItem = {
   description?: string;
   logo_url?: string;
   category?: string;
+  categories?: CategoryItem[];
   status?: string;
   tags?: string;
   enabled?: boolean; // 本地员工启用状态
@@ -71,6 +72,7 @@ export type McpListItem = {
   description?: string;
   logo_url?: string;
   category?: string;
+  categories?: CategoryItem[];
   status?: string;
   tags?: string;
   installed?: boolean; // 从 .install-metadata.json 合并
@@ -85,6 +87,13 @@ export type McpDetail = McpListItem & {
   updated_at?: string;
 };
 
+export type CategoryItem = {
+  id?: number;
+  name: string;
+  parent_id?: number;
+  level?: number;
+};
+
 export type SkillListItem = {
   folder: string;
   name: string;
@@ -93,6 +102,7 @@ export type SkillListItem = {
   logo_url?: string;
   emoji?: string;
   categoryCn?: string;
+  categories?: CategoryItem[];
   tags?: string;
   os?: string;
   status?: string;
@@ -126,6 +136,18 @@ export type EduCourse = {
   lessons?: EduLesson[];
   created_at?: string;
   updated_at?: string;
+};
+
+export type CategoryTreeNode = {
+  id: number | string;
+  name: string;
+  scope?: string;
+  parent_id?: number | string | null;
+  level?: number;
+  path?: string;
+  is_top?: boolean;
+  sort?: number;
+  children?: CategoryTreeNode[];
 };
 
 export type EduCategory = {
@@ -204,6 +226,17 @@ export async function fetchSkills(
 export async function fetchSkillDetail(folder: string, opts?: RemoteMarketOptions) {
   return await localGet<SkillDetail>(
     `/api/v1/skills/${encodeURIComponent(folder)}`,
+    opts?.gatewayHost,
+    opts?.token,
+  );
+}
+
+export async function fetchCategories(
+  scope: "skill" | "employee" | "tool" | "mcp",
+  opts?: RemoteMarketOptions,
+) {
+  return await localGet<CategoryTreeNode[]>(
+    `/api/v1/categories?scope=${encodeURIComponent(scope)}`,
     opts?.gatewayHost,
     opts?.token,
   );

@@ -427,6 +427,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /api/v1/skills", s.requireGatewayToken(s.handleSiteSkills))
 	s.mux.HandleFunc("GET /api/v1/skills/{folder}", s.requireGatewayToken(s.handleSiteSkillDetail))
 	s.mux.HandleFunc("GET /api/v1/skills/{folder}/download", s.requireGatewayToken(s.handleSiteSkillDownload))
+	s.mux.HandleFunc("GET /api/v1/categories", s.requireGatewayToken(s.handleSiteCategories))
 	s.mux.HandleFunc("GET /api/v1/edu/categories", s.requireGatewayToken(s.handleSiteEduCategories))
 	s.mux.HandleFunc("GET /api/v1/edu/lessons/{id}", s.requireGatewayToken(s.handleSiteEduLessonDetail))
 	s.mux.HandleFunc("GET /api/v1/site/uploads/{path...}", s.handleSiteUploads)

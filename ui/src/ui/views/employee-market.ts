@@ -1,10 +1,11 @@
 import { html, nothing } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import type { EmployeeDetail, EmployeeListItem } from "../controllers/remote-market.ts";
+import { resolveLogoUrl } from "../controllers/remote-market.ts";
+import { groupByCategoryKey } from "../utils/category-helpers.ts";
 import { icons } from "../icons.js";
 import { nativeConfirm } from "../native-dialog-bridge.ts";
 import { t } from "../strings.js";
-import { resolveLogoUrl } from "../controllers/remote-market.ts";
 import { toSanitizedMarkdownHtml } from "../markdown.ts";
 
 export type EmployeeMarketProps = {
@@ -12,6 +13,7 @@ export type EmployeeMarketProps = {
   error: string | null;
   query: string;
   category: string;
+  categoryDescendants: string[];
   items: EmployeeListItem[];
   selectedId: number | string | null;
   selectedDetail: EmployeeDetail | null;
@@ -51,6 +53,7 @@ export type EmployeeMarketCategoryInfo = {
   counts: Map<string, number>;
 };
 
+// TODO: catalog-pages.test.ts 依赖此函数，测试重构后删除
 export function computeEmployeeMarketCategories(
   items: EmployeeListItem[],
   query: string
@@ -244,25 +247,12 @@ export function renderEmployeeMarket(props: EmployeeMarketProps) {
     return text.includes(q);
   });
 
-  const filteredItems =
-    effectiveCategory === "__all__"
-      ? filteredByQuery
-      : filteredByQuery.filter((it) => normalizeCategory(it.category) === effectiveCategory);
-
-  // Group by category for section display
-  const grouped = new Map<string, EmployeeListItem[]>();
-  for (const it of filteredItems) {
-    const cat = normalizeCategory(it.category);
-    const arr = grouped.get(cat) ?? [];
-    arr.push(it);
-    grouped.set(cat, arr);
-  }
-  const sectionsFixed =
-    effectiveCategory === "__all__"
-      ? Array.from(grouped.entries())
-          .sort((a, b) => a[0].localeCompare(b[0], "zh-Hans-CN"))
-          .map(([cat, items]) => ({ title: cat === "其它" ? "其它" : cat, items }))
-      : [{ title: effectiveCategory, items: filteredItems }];
+  const { filtered: filteredItems, sections: sectionsFixed } = groupByCategoryKey(
+    filteredByQuery,
+    effectiveCategory,
+    props.categoryDescendants,
+    (it) => normalizeCategory(it.category)
+  );
   const showToolbarActions = !props.error || (props.items?.length ?? 0) > 0;
 
   const toolbarActions = html`

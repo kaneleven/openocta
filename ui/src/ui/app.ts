@@ -484,6 +484,7 @@ export class OpenClawApp extends LitElement implements NativeDialogInvoker {
   @state() employeeMarketError: string | null = null;
   @state() employeeMarketQuery = "";
   @state() employeeMarketCategory = "__all__";
+  @state() employeeMarketCategoryDescendants: string[] = [];
   @state() employeeMarketViewMode: "list" | "card" = "card";
   @state() employeeMarketItems: import("./controllers/remote-market.ts").EmployeeListItem[] = [];
   @state() employeeMarketSelectedId: number | string | null = null;
@@ -497,6 +498,7 @@ export class OpenClawApp extends LitElement implements NativeDialogInvoker {
   @state() skillLibraryError: string | null = null;
   @state() skillLibraryQuery = "";
   @state() skillLibraryCategory = "__all__";
+  @state() skillLibraryCategoryDescendants: string[] = [];
   @state() skillLibraryStatus = "__all__";
   @state() skillLibraryItems: import("./controllers/remote-market.ts").SkillListItem[] = [];
   @state() skillLibrarySelectedFolder: string | null = null;
@@ -520,6 +522,7 @@ export class OpenClawApp extends LitElement implements NativeDialogInvoker {
   @state() toolLibraryError: string | null = null;
   @state() toolLibraryQuery = "";
   @state() toolLibraryCategory = "__all__";
+  @state() toolLibraryCategoryDescendants: string[] = [];
   @state() toolLibraryItems: import("./controllers/remote-market.ts").McpListItem[] = [];
   @state() toolLibrarySelectedId: number | string | null = null;
   @state() toolLibrarySelectedDetail: import("./controllers/remote-market.ts").McpDetail | null = null;

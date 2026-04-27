@@ -2,6 +2,7 @@ import { html, nothing, type TemplateResult } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { icons } from "../icons.js";
 import { resolveLogoUrl, type SkillDetail, type SkillListItem } from "../controllers/remote-market.ts";
+import { itemBelongsToCategory } from "../utils/category-helpers.ts";
 import { toSanitizedMarkdownHtml } from "../markdown.ts";
 import { nativeConfirm } from "../native-dialog-bridge.ts";
 import { t } from "../strings.js";
@@ -44,6 +45,7 @@ export type SkillLibraryProps = {
   selectedFolder: string | null;
   selectedDetail: SkillDetail | null;
   selectedCategory: string;
+  selectedCategoryDescendants: string[];
   selectedStatus: string;
   installedKeys?: Set<string>;
   /** 已禁用的 skillKey 集合 */
@@ -106,6 +108,7 @@ export type SkillLibraryCategoryInfo = {
   counts: Map<string, number>;
 };
 
+// TODO: catalog-pages.test.ts 依赖此函数，测试重构后删除
 export function computeSkillLibraryCategories(
   items: SkillListItem[],
   query: string,
@@ -344,7 +347,9 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
       if (!text.includes(q)) return false;
     }
     const okCategory =
-      activeCategory === "__all__" ? true : normalizeCategory(it.categoryCn) === activeCategory;
+      activeCategory === "__all__"
+        ? true
+        : itemBelongsToCategory(it, props.selectedCategoryDescendants);
     const okStatus =
       activeStatus === "__all__" ? true : (it.status ?? "").trim().toLowerCase() === activeStatus;
     return okCategory && okStatus;
@@ -364,7 +369,7 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
           .map((c) => c.name)
           .filter((name) => grouped.has(name))
           .map((name) => ({ name, items: grouped.get(name) ?? [] }))
-      : [{ name: activeCategory, items: grouped.get(activeCategory) ?? [] }];
+      : [{ name: activeCategory, items: filtered }];
   const showToolbarActions = !props.error || props.items.length > 0;
 
   const toolbarActions = html`

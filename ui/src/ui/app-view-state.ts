@@ -355,6 +355,7 @@ export type AppViewState = {
   employeeMarketError: string | null;
   employeeMarketQuery: string;
   employeeMarketCategory: string;
+  employeeMarketCategoryDescendants: string[];
   employeeMarketViewMode: "list" | "card";
   employeeMarketItems: import("./controllers/remote-market.ts").EmployeeListItem[];
   employeeMarketSelectedId: number | string | null;
@@ -368,6 +369,7 @@ export type AppViewState = {
   skillLibraryError: string | null;
   skillLibraryQuery: string;
   skillLibraryCategory: string;
+  skillLibraryCategoryDescendants: string[];
   skillLibraryStatus: string;
   skillLibraryItems: import("./controllers/remote-market.ts").SkillListItem[];
   skillLibrarySelectedFolder: string | null;
@@ -391,6 +393,7 @@ export type AppViewState = {
   toolLibraryError: string | null;
   toolLibraryQuery: string;
   toolLibraryCategory: string;
+  toolLibraryCategoryDescendants: string[];
   toolLibraryItems: import("./controllers/remote-market.ts").McpListItem[];
   toolLibrarySelectedId: number | string | null;
   toolLibrarySelectedDetail: import("./controllers/remote-market.ts").McpDetail | null;

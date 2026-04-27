@@ -161,6 +161,7 @@ func mergeSkillsListWithLocalManaged(skills []map[string]interface{}, env func(s
 			"name":        name,
 			"description": desc,
 			"categoryCn":  "本地",
+			"categories":  []map[string]interface{}{{"name": "本地"}},
 			"tags":        "",
 			"status":      "open",
 			"installed":   true,
@@ -815,6 +816,10 @@ func (s *Server) handleSiteSkillDownload(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	s.proxySiteGET(w, r, "/api/v1/skills/"+url.PathEscape(folder)+"/download", proxySiteGETDownload)
+}
+
+func (s *Server) handleSiteCategories(w http.ResponseWriter, r *http.Request) {
+	s.proxySiteGET(w, r, "/api/v1/categories", proxySiteGETSilentJSONArray)
 }
 
 func (s *Server) handleSiteEduCategories(w http.ResponseWriter, r *http.Request) {

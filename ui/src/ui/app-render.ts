@@ -331,7 +331,8 @@ import { renderEnvVars } from "./views/env-vars.ts";
 import { renderCronConfig, renderCronHistory } from "./views/cron.ts";
 import { renderDebug } from "./views/debug.ts";
 import { installFromSite } from "./controllers/remote-market.ts";
-import { computeEmployeeMarketCategories, renderEmployeeMarket } from "./views/employee-market.ts";
+import { renderEmployeeMarket } from "./views/employee-market.ts";
+import "./components/category-tree-sidebar.ts";
 import { renderExecApprovalPrompt } from "./views/exec-approval.ts";
 import { renderGatewayUrlConfirmation } from "./views/gateway-url-confirmation.ts";
 import { renderNativeDialogOverlay } from "./views/native-dialog-overlay.ts";
@@ -339,8 +340,8 @@ import { renderLogs } from "./views/logs.ts";
 import { renderNodes } from "./views/nodes.ts";
 import { renderOverview } from "./views/overview.ts";
 import { renderSessions } from "./views/sessions.ts";
-import { computeSkillLibraryCategories, renderSkillLibrary } from "./views/skill-library.ts";
-import { computeToolLibraryCategories, renderToolLibrary } from "./views/tool-library.ts";
+import { renderSkillLibrary } from "./views/skill-library.ts";
+import { renderToolLibrary } from "./views/tool-library.ts";
 import { renderTutorials } from "./views/tutorials.ts";
 import { requestDesktopClearWorkspace, requestDesktopUninstall } from "./controllers/desktop-uninstall.ts";
 import { openExternalUrl } from "./open-external-url.ts";
@@ -1019,82 +1020,68 @@ export function renderApp(state: AppViewState) {
                     ${renderNavCollapseFooter}
                   `
               : state.tab === "employeeMarket"
-                ? (() => {
-                    const { orderedCategories, counts } = computeEmployeeMarketCategories(
-                      state.employeeMarketItems,
-                      state.employeeMarketQuery
-                    );
-                    const effectiveCategory = (state.employeeMarketCategory ?? "").trim() || "__all__";
-                    return html`
+                ? html`
+                    <div class="nav-group">
+                      <div class="nav-group__items">
+                        <category-tree-sidebar
+                          scope="employee"
+                          .items=${state.employeeMarketItems}
+                          .selectedCategory=${state.employeeMarketCategory || "__all__"}
+                          .keyword=${state.employeeMarketQuery}
+                          .gatewayHost=${state.settings?.gatewayUrl?.trim()}
+                          .token=${state.settings?.token?.trim()}
+                          ?disabled=${state.employeeMarketLoading}
+                          @category-select=${(e: CustomEvent) => { state.employeeMarketCategory = e.detail.name; state.employeeMarketCategoryDescendants = e.detail.descendantNames ?? []; }}
+                        ></category-tree-sidebar>
+                      </div>
+                    </div>
+                  `
+                : state.tab === "skillLibrary"
+                  ? html`
                       <div class="nav-group">
                         <div class="nav-group__items">
-                          <div class="emp-categories">
-                          ${orderedCategories.map((catKey) => {
-                            const label = catKey === "__all__" ? "全部" : catKey;
-                            const active = effectiveCategory === catKey;
-                            const count = counts.get(catKey) ?? 0;
-                            return html`
-                              <button
-                                class="emp-cat ${active ? "active" : ""}"
-                                type="button"
-                                ?disabled=${state.employeeMarketLoading}
-                                @click=${() => (state.employeeMarketCategory = catKey)}
-                              >
-                                <span class="emp-cat__name">${label}</span>
-                                <span class="emp-cat__count">${count}</span>
-                              </button>
-                            `;
-                          })}
-                          </div>
+                          <category-tree-sidebar
+                            scope="skill"
+                            .items=${state.skillLibraryItems}
+                            .selectedCategory=${state.skillLibraryCategory || "__all__"}
+                            .keyword=${state.skillLibraryQuery}
+                            .gatewayHost=${state.settings?.gatewayUrl?.trim()}
+                            .token=${state.settings?.token?.trim()}
+                            ?disabled=${state.skillLibraryLoading}
+                            @category-select=${(e: CustomEvent) => { state.skillLibraryCategory = e.detail.name; state.skillLibraryCategoryDescendants = e.detail.descendantNames ?? []; }}
+                          ></category-tree-sidebar>
                         </div>
                       </div>
-                    `;
-                  })()
-                : state.tab === "skillLibrary"
-                  ? (() => {
-                      const { orderedCategories, counts } = computeSkillLibraryCategories(
-                        state.skillLibraryItems,
-                        state.skillLibraryQuery,
-                        state.skillLibraryStatus ?? ""
-                      );
-                      const effectiveCategory = (state.skillLibraryCategory ?? "").trim() || "__all__";
-                      return html`
+                    `
+                  : state.tab === "toolLibrary"
+                    ? html`
+                        <div class="nav-group">
+                          <div class="nav-group__items">
+                            <category-tree-sidebar
+                              scope="tool"
+                              .items=${state.toolLibraryItems}
+                              .selectedCategory=${state.toolLibraryCategory || "__all__"}
+                              .keyword=${state.toolLibraryQuery}
+                              .gatewayHost=${state.settings?.gatewayUrl?.trim()}
+                              .token=${state.settings?.token?.trim()}
+                              ?disabled=${state.toolLibraryLoading}
+                              @category-select=${(e: CustomEvent) => { state.toolLibraryCategory = e.detail.name; state.toolLibraryCategoryDescendants = e.detail.descendantNames ?? []; }}
+                            ></category-tree-sidebar>
+                          </div>
+                        </div>
+                      `
+                    : state.tab === "modelLibrary"
+                    ? html`
                         <div class="nav-group">
                           <div class="nav-group__items">
                             <div class="emp-categories">
-                            ${orderedCategories.map((catKey) => {
-                              const label = catKey === "__all__" ? "全部" : catKey;
-                              const active = effectiveCategory === catKey;
-                              const count = counts.get(catKey) ?? 0;
-                              return html`
-                                <button
-                                  class="emp-cat ${active ? "active" : ""}"
-                                  type="button"
-                                  ?disabled=${state.skillLibraryLoading}
-                                  @click=${() => (state.skillLibraryCategory = catKey)}
-                                >
-                                  <span class="emp-cat__name">${label}</span>
-                                  <span class="emp-cat__count">${count}</span>
-                                </button>
-                              `;
-                            })}
-                            </div>
-                          </div>
-                        </div>
-                      `;
-                    })()
-                    : state.tab === "toolLibrary"
-                    ? (() => {
-                        const { orderedCategories, counts } = computeToolLibraryCategories(
-                          state.toolLibraryItems,
-                          state.toolLibraryQuery
-                        );
-                        const effectiveCategory = (state.toolLibraryCategory ?? "").trim() || "__all__";
-                        return html`
-                          <div class="nav-group">
-                            <div class="nav-group__items">
-                              <div class="emp-categories">
-                              ${orderedCategories.map((catKey) => {
+                            ${(() => {
+                              const { orderedCategories, counts } = computeModelLibraryCategories(
+                                state.modelLibraryItems,
+                                state.modelLibraryQuery
+                              );
+                              const effectiveCategory = (state.modelLibraryCategory ?? "").trim() || "__all__";
+                              return orderedCategories.map((catKey) => {
                                 const label = catKey === "__all__" ? "全部" : catKey;
                                 const active = effectiveCategory === catKey;
                                 const count = counts.get(catKey) ?? 0;
@@ -1102,19 +1089,19 @@ export function renderApp(state: AppViewState) {
                                   <button
                                     class="emp-cat ${active ? "active" : ""}"
                                     type="button"
-                                    ?disabled=${state.toolLibraryLoading}
-                                    @click=${() => (state.toolLibraryCategory = catKey)}
+                                    ?disabled=${state.modelLibraryLoading}
+                                    @click=${() => (state.modelLibraryCategory = catKey)}
                                   >
                                     <span class="emp-cat__name">${label}</span>
                                     <span class="emp-cat__count">${count}</span>
                                   </button>
                                 `;
-                              })}
-                              </div>
+                              });
+                            })()}
                             </div>
                           </div>
-                        `;
-                      })()
+                        </div>
+                      `
                     : state.tab === "modelLibrary"
                       ? (() => {
                           const { orderedCategories, counts } = computeModelLibraryCategories(
@@ -1771,6 +1758,7 @@ export function renderApp(state: AppViewState) {
                 error: state.employeeMarketError,
                 query: state.employeeMarketQuery,
                 category: state.employeeMarketCategory,
+                categoryDescendants: state.employeeMarketCategoryDescendants,
                 items: state.employeeMarketItems,
                 selectedId: state.employeeMarketSelectedId,
                 selectedDetail: state.employeeMarketSelectedDetail,
@@ -2144,6 +2132,7 @@ export function renderApp(state: AppViewState) {
                 gatewayHost: state.settings?.gatewayUrl?.trim(),
                 query: state.skillLibraryQuery,
                 selectedCategory: state.skillLibraryCategory,
+                selectedCategoryDescendants: state.skillLibraryCategoryDescendants,
                 selectedStatus: state.skillLibraryStatus,
                 items: state.skillLibraryItems,
                 selectedFolder: state.skillLibrarySelectedFolder,
@@ -2429,6 +2418,7 @@ export function renderApp(state: AppViewState) {
                 error: state.toolLibraryError,
                 query: state.toolLibraryQuery,
                   category: state.toolLibraryCategory,
+                  categoryDescendants: state.toolLibraryCategoryDescendants,
                   onCategoryChange: (next) => (state.toolLibraryCategory = next),
                 items: state.toolLibraryItems,
                 addModalOpen: state.mcpAddModalOpen,
