@@ -18,9 +18,10 @@ import (
 	"github.com/openocta/openocta/pkg/paths"
 )
 
-// skillNameRe: English letters, numbers, hyphens, underscores, dots (e.g. prometheus-1.0.0). 1-64 chars.
+// skillNameRe: Unicode letters/numbers, hyphens, underscores, dots. 1-64 chars.
+// Supports Chinese and other Unicode characters.
 // Note: ".." is rejected separately for path safety.
-var skillNameRe = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$`)
+var skillNameRe = regexp.MustCompile(`^[\p{L}\p{N}][\p{L}\p{N}._-]{0,63}$`)
 
 const (
 	skillUploadMaxSize   = 10 << 20 // 10 MB

@@ -513,7 +513,6 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
                           @input=${(e: Event) =>
                             props.onUploadNameChange((e.target as HTMLInputElement).value)}
                           placeholder=${t("skillsUploadNamePlaceholder")}
-                          pattern="[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}"
                           ?disabled=${props.uploadFiles.length > 1}
                         /></span>
                         ${props.uploadFiles.length > 1
