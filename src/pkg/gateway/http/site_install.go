@@ -596,7 +596,7 @@ func installMcp(zipData []byte, typeVal, fromVal string, env func(string) string
 		Args:    entry.Args,
 		Env:     entry.Env,
 	}
-	mcpEntry.Enabled = &enabled
+	mcpEntry.Enabled = enabled
 
 	// 合并到 openocta.json
 	stateDir := paths.ResolveStateDir(env)

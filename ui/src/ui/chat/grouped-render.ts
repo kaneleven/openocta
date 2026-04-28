@@ -124,7 +124,7 @@ export function renderStreamingGroup(
             content: [{ type: "text", text }],
             timestamp: startedAt,
           },
-          { isStreaming: true, showReasoning: false },
+          { isStreaming: true, showReasoning: false, showToolTrace: true },
           onOpenSidebar,
         )}
         <div class="chat-group-footer">
@@ -141,6 +141,7 @@ export function renderMessageGroup(
   opts: {
     onOpenSidebar?: (content: string) => void;
     showReasoning: boolean;
+    showToolTrace: boolean;
     assistantName?: string;
     assistantAvatar?: string | null;
   },
@@ -180,6 +181,7 @@ export function renderMessageGroup(
             {
               isStreaming: group.isStreaming && index === group.messages.length - 1,
               showReasoning: opts.showReasoning,
+              showToolTrace: opts.showToolTrace,
             },
             opts.onOpenSidebar,
           ),
@@ -408,7 +410,7 @@ function renderCollapsedToolResult(
 
 function renderGroupedMessage(
   message: unknown,
-  opts: { isStreaming: boolean; showReasoning: boolean },
+  opts: { isStreaming: boolean; showReasoning: boolean; showToolTrace: boolean },
   onOpenSidebar?: (content: string) => void,
 ) {
   const m = message as Record<string, unknown>;
@@ -420,7 +422,11 @@ function renderGroupedMessage(
     typeof m.toolCallId === "string" ||
     typeof m.tool_call_id === "string";
 
-  const toolCards = extractToolCards(message);
+  if (!opts.showToolTrace && isToolResult) {
+    return nothing;
+  }
+
+  const toolCards = opts.showToolTrace ? extractToolCards(message) : [];
   const hasToolCards = toolCards.length > 0;
   const images = extractImages(message);
   const hasImages = images.length > 0;
@@ -482,7 +488,7 @@ function renderGroupedMessage(
           ? html`<div class="chat-text">${unsafeHTML(toSanitizedMarkdownHtml(markdown))}</div>`
           : nothing
       }
-      ${toolCards.map((card) => renderToolCardSidebar(card, onOpenSidebar))}
+      ${opts.showToolTrace ? toolCards.map((card) => renderToolCardSidebar(card, onOpenSidebar)) : nothing}
     </div>
   `;
 }

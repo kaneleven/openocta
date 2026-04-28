@@ -25,14 +25,14 @@ type Manager struct {
 // NewManager creates a manager and connects to all enabled MCP servers from cfg.
 // If cfg or cfg.Mcp is nil, returns an empty manager (no tools).
 // A single server failing to connect is logged and skipped; other servers still start.
-func NewManager(ctx context.Context, cfg *config.OpenOctaConfig) (*Manager, error) {
+func NewManager(ctx context.Context, mcpServer map[string]config.McpServerEntry) (*Manager, error) {
 	m := &Manager{}
-	if cfg == nil || cfg.Mcp == nil || len(cfg.Mcp.Servers) == 0 {
+	if len(mcpServer) == 0 {
 		return m, nil
 	}
-	m.cfg = cfg.Mcp
-	for key, entry := range cfg.Mcp.Servers {
-		if entry.Enabled != nil && !*entry.Enabled {
+
+	for key, entry := range mcpServer {
+		if !entry.Enabled {
 			continue
 		}
 		// Use background so MCP connections outlive the startup request.

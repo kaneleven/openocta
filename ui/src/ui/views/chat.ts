@@ -283,6 +283,8 @@ export function renderChat(props: ChatProps) {
   const activeSession = props.sessions?.sessions?.find((row) => row.key === props.sessionKey);
   const reasoningLevel = activeSession?.reasoningLevel ?? "off";
   const showReasoning = props.showThinking && reasoningLevel !== "off";
+  const conversationOnly = props.conversationOnly ?? true;
+  const showToolTrace = !conversationOnly;
   const assistantIdentity = {
     name: props.assistantName,
     avatar: props.assistantAvatar ?? props.assistantAvatarUrl ?? null,
@@ -370,12 +372,14 @@ export function renderChat(props: ChatProps) {
           }
 
           if (item.kind === "group") {
-            return renderMessageGroup(item, {
+            const opts = {
               onOpenSidebar: props.onOpenSidebar,
               showReasoning,
               assistantName: props.assistantName,
               assistantAvatar: assistantIdentity.avatar,
-            });
+            } as unknown as { showToolTrace: boolean };
+            opts.showToolTrace = showToolTrace;
+            return renderMessageGroup(item, opts as never);
           }
 
           return nothing;
@@ -384,9 +388,6 @@ export function renderChat(props: ChatProps) {
       ${emptyIntro}
     </div>
   `;
-
-  const conversationOnly = props.conversationOnly ?? true;
-  const showToolTrace = !conversationOnly;
   const visibleQueue = props.queue.filter((item) => item.sessionKey === props.sessionKey);
 
   return html`
@@ -693,10 +694,6 @@ function buildChatItems(props: ChatProps): Array<ChatItem | MessageGroup> {
     const msg = history[i];
     const normalized = normalizeMessage(msg);
 
-    if (!props.showThinking && normalized.role.toLowerCase() === "toolresult") {
-      continue;
-    }
-
     if (conversationOnly && normalized.role === "toolResult") {
       continue;
     }
@@ -707,7 +704,7 @@ function buildChatItems(props: ChatProps): Array<ChatItem | MessageGroup> {
       message: msg,
     });
   }
-  if (props.showThinking && !conversationOnly) {
+  if (!conversationOnly) {
     for (let i = 0; i < tools.length; i++) {
       items.push({
         kind: "message",

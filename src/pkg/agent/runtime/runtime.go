@@ -370,7 +370,7 @@ func mergeSkylarkOptions(opts Options) *api.SkylarkOptions {
 	if o := skylarkFromAgentDefaults(opts.Config); o != nil {
 		return withSkylarkOptimizations(o)
 	}
-	return &api.SkylarkOptions{Enabled: false}
+	return &api.SkylarkOptions{Enabled: true}
 }
 
 func skylarkFromAgentDefaults(cfg *config.OpenOctaConfig) *api.SkylarkOptions {

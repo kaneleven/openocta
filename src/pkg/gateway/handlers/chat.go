@@ -26,9 +26,9 @@ import (
 	"github.com/openocta/openocta/pkg/employees"
 	"github.com/openocta/openocta/pkg/gateway/protocol"
 	"github.com/openocta/openocta/pkg/logging"
-	"github.com/openocta/openocta/pkg/mcp"
 	"github.com/openocta/openocta/pkg/session"
 	"github.com/stellarlinkco/agentsdk-go/pkg/api"
+	sdkTool "github.com/stellarlinkco/agentsdk-go/pkg/tool"
 )
 
 var chatLog = logging.Sub("chat")
@@ -583,10 +583,13 @@ func buildSkillsSnapshotForEmployee(projectRoot string, cfg *config.OpenOctaConf
 
 // buildMCPForSession 为会话构建 MCP 规格列表。
 // 对于数字员工会话（employee- 前缀），会合并全局 mcp.servers 与员工 manifest.mcpServers（同 key 时员工覆盖）。
-func buildMCPForSession(sessionKey string, cfg *config.OpenOctaConfig) []string {
+func buildMCPForSession(sessionKey string, cfg *config.OpenOctaConfig) map[string]config.McpServerEntry {
 	merged := &config.McpConfig{Servers: make(map[string]config.McpServerEntry)}
 	if cfg != nil && cfg.Mcp != nil {
 		for k, v := range cfg.Mcp.Servers {
+			if !v.Enabled {
+				continue
+			}
 			merged.Servers[k] = v
 		}
 	}
@@ -594,11 +597,14 @@ func buildMCPForSession(sessionKey string, cfg *config.OpenOctaConfig) []string 
 		env := func(k string) string { return os.Getenv(k) }
 		if m, err := employees.LoadManifest(employeeID, env); err == nil && m != nil && len(m.McpServers) > 0 {
 			for k, v := range m.McpServers {
+				if !v.Enabled {
+					continue
+				}
 				merged.Servers[k] = v
 			}
 		}
 	}
-	return mcp.BuildServerSpecsFromMcpConfig(merged)
+	return merged.Servers
 }
 
 // parseEmployeeIDFromSessionKey 解析 sessionKey 中的数字员工 ID。
@@ -1179,6 +1185,26 @@ func ChatSendHandler(opts HandlerOpts) error {
 			}
 			mcpServers := buildMCPForSession(sessionKey, runtimeConfig)
 			agentTools := tools.DefaultToolsWithInvoker(invoker)
+
+			// Merge tools by name, prefer later source on conflicts.
+			toolOrder := make([]string, 0, len(agentTools))
+			toolByName := make(map[string]sdkTool.Tool, len(agentTools))
+			addTool := func(t sdkTool.Tool) {
+				if t == nil {
+					return
+				}
+				name := strings.TrimSpace(t.Name())
+				if name == "" {
+					return
+				}
+				if _, ok := toolByName[name]; !ok {
+					toolOrder = append(toolOrder, name)
+				}
+				toolByName[name] = t
+			}
+			for _, t := range agentTools {
+				addTool(t)
+			}
 			// Add MCP tools from gateway context (env injection + long-lived connections).
 			if ctxForBroadcast != nil && ctxForBroadcast.MCPTools != nil {
 				mcpTools, mcpErr := ctxForBroadcast.MCPTools(ctx)
@@ -1186,20 +1212,50 @@ func ChatSendHandler(opts HandlerOpts) error {
 					chatLog.Warn("mcp tools load failed, continuing without MCP sessionKey=%s error=%v", sessionKey, mcpErr)
 				} else if len(mcpTools) > 0 {
 					for _, t := range mcpTools {
-						agentTools = append(agentTools, t)
+						// Lower precedence than tools generated from mcpServers below.
+						addTool(t)
 					}
 				}
 			}
-			if runtimeConfig != nil && runtimeConfig.Mcp != nil && len(runtimeConfig.Mcp.Servers) > 0 {
-				mgr, err := mcpManager.NewManager(context.Background(), runtimeConfig)
+
+			// Add MCP tools from merged server specs (global config + employee manifest).
+			// On duplicates, tools built from mcpServers take precedence over context-injected MCP tools.
+			if len(mcpServers) > 0 {
+				// IMPORTANT: Do not mutate runtimeConfig.Mcp.Servers here; that is the loaded config snapshot.
+				// Build a merged server map for MCP manager only.
+				serversMerged := make(map[string]config.McpServerEntry)
+				if runtimeConfig != nil && runtimeConfig.Mcp != nil && len(runtimeConfig.Mcp.Servers) > 0 {
+					for k, v := range runtimeConfig.Mcp.Servers {
+						if !v.Enabled {
+							continue
+						}
+						serversMerged[k] = v
+					}
+				}
+				// Session/employee derived servers override duplicates.
+				for k, v := range mcpServers {
+					if !v.Enabled {
+						continue
+					}
+					serversMerged[k] = v
+				}
+
+				mgr, err := mcpManager.NewManager(context.Background(), serversMerged)
 				if err == nil && mgr != nil {
 					defer mgr.Close()
 					mcpTools, mcpToolsErr := mgr.Tools(ctx)
 					if mcpToolsErr == nil {
 						for _, t := range mcpTools {
-							agentTools = append(agentTools, t)
+							addTool(t)
 						}
 					}
+				}
+			}
+
+			agentTools = make([]sdkTool.Tool, 0, len(toolOrder))
+			for _, name := range toolOrder {
+				if t, ok := toolByName[name]; ok && t != nil {
+					agentTools = append(agentTools, t)
 				}
 			}
 
@@ -1225,7 +1281,6 @@ func ChatSendHandler(opts HandlerOpts) error {
 				EnableApprovalQueue:   true,
 				EnableSystemPrompt:    true,
 				SystemPromptOverrides: systemPromptOverrides,
-				MCPServers:            mcpServers,
 				TokenTracking:         true,
 				AgentID:               sessionAgentID, // 与 sessions jsonl 目录 ~/.openocta/agents/<agentId>/sessions 一致
 				Env:                   os.Getenv,
