@@ -31,10 +31,12 @@ clean:
 
 # GoReleaser 快照构建（不发布）
 snapshot:
+	@sed -i 's/\r$$//' deploy/scripts/*.sh
 	goreleaser release --snapshot --clean --skip=publish
 
 # GoReleaser 正式发布
 release:
+	@sed -i 's/\r$$//' deploy/scripts/*.sh
 	goreleaser release --clean
 
 # 本地 Docker 构建（使用 deploy/Dockerfile 多阶段构建）
