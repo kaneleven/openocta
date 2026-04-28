@@ -1071,38 +1071,6 @@ export function renderApp(state: AppViewState) {
                         </div>
                       `
                     : state.tab === "modelLibrary"
-                    ? html`
-                        <div class="nav-group">
-                          <div class="nav-group__items">
-                            <div class="emp-categories">
-                            ${(() => {
-                              const { orderedCategories, counts } = computeModelLibraryCategories(
-                                state.modelLibraryItems,
-                                state.modelLibraryQuery
-                              );
-                              const effectiveCategory = (state.modelLibraryCategory ?? "").trim() || "__all__";
-                              return orderedCategories.map((catKey) => {
-                                const label = catKey === "__all__" ? "全部" : catKey;
-                                const active = effectiveCategory === catKey;
-                                const count = counts.get(catKey) ?? 0;
-                                return html`
-                                  <button
-                                    class="emp-cat ${active ? "active" : ""}"
-                                    type="button"
-                                    ?disabled=${state.modelLibraryLoading}
-                                    @click=${() => (state.modelLibraryCategory = catKey)}
-                                  >
-                                    <span class="emp-cat__name">${label}</span>
-                                    <span class="emp-cat__count">${count}</span>
-                                  </button>
-                                `;
-                              });
-                            })()}
-                            </div>
-                          </div>
-                        </div>
-                      `
-                    : state.tab === "modelLibrary"
                       ? (() => {
                           const { orderedCategories, counts } = computeModelLibraryCategories(
                             modelProviders,
