@@ -276,7 +276,9 @@ func loadSkillFromFSFile(fsys fs.FS, skillPath string, source string) (Entry, er
 	}
 
 	frontmatter := parseFrontmatter(string(data))
-	if nameFromFM, ok := frontmatter["name"]; ok && nameFromFM != "" {
+	if displayName, ok := frontmatter["displayName"]; ok && displayName != "" {
+		name = displayName
+	} else if nameFromFM, ok := frontmatter["name"]; ok && nameFromFM != "" {
 		name = nameFromFM
 	}
 
@@ -315,7 +317,9 @@ func loadSkillFromFile(skillFile string, source string) (Entry, error) {
 
 	// Try to extract name from frontmatter
 	frontmatter := parseFrontmatter(string(data))
-	if nameFromFM, ok := frontmatter["name"]; ok && nameFromFM != "" {
+	if displayName, ok := frontmatter["displayName"]; ok && displayName != "" {
+		name = displayName
+	} else if nameFromFM, ok := frontmatter["name"]; ok && nameFromFM != "" {
 		name = nameFromFM
 	}
 
@@ -372,10 +376,13 @@ func parseFrontmatter(content string) map[string]string {
 // parseMetadata parses OpenOcta metadata from frontmatter.
 func parseMetadata(frontmatter map[string]string) *Metadata {
 	// TODO: Parse JSON5 metadata field
-	// For now, return basic metadata
-	return &Metadata{
+	m := &Metadata{
 		Requires: &Requires{},
 	}
+	if v, ok := frontmatter["skillKey"]; ok {
+		m.SkillKey = v
+	}
+	return m
 }
 
 // resolveBundledSkillsDir resolves the bundled skills directory.

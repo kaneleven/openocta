@@ -285,6 +285,13 @@ func (s *Server) handleSkillsUpload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// 用用户指定的名称覆盖 SKILL.md frontmatter 中的 displayName 字段
+	skillPath := filepath.Join(targetDir, "SKILL.md")
+	if data, err := os.ReadFile(skillPath); err == nil {
+		updated := setFrontmatterField(data, "displayName", nameRaw)
+		_ = os.WriteFile(skillPath, updated, 0644)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	result := map[string]interface{}{
 		"ok":   true,
@@ -298,11 +305,6 @@ func (s *Server) handleSkillsUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write(marshal)
-	//err = json.NewEncoder(w).Encode(map[string]interface{}{
-	//	"ok":   true,
-	//	"name": nameRaw,
-	//	"path": targetDir,
-	//})
 }
 
 func writeSkillsUploadError(w http.ResponseWriter, status int, message string, template string) {
@@ -313,6 +315,38 @@ func writeSkillsUploadError(w http.ResponseWriter, status int, message string, t
 		payload["template"] = template
 	}
 	_ = json.NewEncoder(w).Encode(payload)
+}
+
+// setFrontmatterField updates or inserts a field in YAML frontmatter.
+// If the file has no frontmatter (--- ... ---), a new one is prepended.
+func setFrontmatterField(content []byte, field, value string) []byte {
+	s := string(content)
+	trimmed := strings.TrimSpace(s)
+	if !strings.HasPrefix(trimmed, "---") {
+		return []byte("---\n" + field + ": " + value + "\n---\n\n" + s)
+	}
+	afterFirst := trimmed[3:]
+	closeIdx := strings.Index(afterFirst, "---")
+	if closeIdx == -1 {
+		return content
+	}
+	fm := strings.TrimSpace(afterFirst[:closeIdx])
+	rest := afterFirst[closeIdx+3:]
+	lines := strings.Split(fm, "\n")
+	var out []string
+	hasField := false
+	for _, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), field+":") {
+			out = append(out, field+": "+value)
+			hasField = true
+		} else {
+			out = append(out, line)
+		}
+	}
+	if !hasField {
+		out = append([]string{field + ": " + value}, out...)
+	}
+	return []byte("---\n" + strings.Join(out, "\n") + "\n---\n" + rest)
 }
 
 // handleEmployeeSkillsUpload handles POST /api/employee-skills/upload (multipart: employeeId, name, file).
@@ -504,6 +538,13 @@ func (s *Server) handleEmployeeSkillsUpload(w http.ResponseWriter, r *http.Reque
 			writeSkillsUploadError(w, http.StatusInternalServerError, "failed to write SKILL.md: "+err.Error(), "")
 			return
 		}
+	}
+
+	// 用用户指定的名称覆盖 SKILL.md frontmatter 中的 displayName 字段
+	skillPath := filepath.Join(targetDir, "SKILL.md")
+	if data, err := os.ReadFile(skillPath); err == nil {
+		updated := setFrontmatterField(data, "displayName", nameRaw)
+		_ = os.WriteFile(skillPath, updated, 0644)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
