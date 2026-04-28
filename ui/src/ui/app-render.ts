@@ -2241,6 +2241,7 @@ export function renderApp(state: AppViewState) {
                       state.skillsUploadFiles = [];
                       state.skillsUploadTemplate = null;
                       await loadSkills(state);
+                      await onRefresh();
                     }
                   } finally {
                     state.skillsUploadBusy = false;
