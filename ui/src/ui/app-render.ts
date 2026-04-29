@@ -361,6 +361,8 @@ import {
   handleMcpAddEditModeChange,
   handleMcpAddSubmit,
   handleMcpDelete,
+  disabledMcpServerKeysFromSnapshot,
+  resolveMcpServerEntryForUi,
   handleMcpToggle,
   handleMcpSelect,
   handleMcpFormPatch,
@@ -2377,11 +2379,7 @@ export function renderApp(state: AppViewState) {
                   queueMicrotask(() => void onRefresh());
                 }
 
-                const mcpServers = (state.configSnapshot?.config as { mcp?: { servers?: Record<string, { enabled?: boolean }> } } | undefined)?.mcp?.servers ?? {};
-                const disabledMcpKeys = new Set<string>();
-                for (const [k, v] of Object.entries(mcpServers)) {
-                  if (v?.enabled === false) disabledMcpKeys.add(k);
-                }
+                const disabledMcpKeys = disabledMcpServerKeysFromSnapshot(state.configSnapshot);
                 return renderToolLibrary({
                 loading: state.toolLibraryLoading,
                 error: state.toolLibraryError,
@@ -2464,7 +2462,7 @@ export function renderApp(state: AppViewState) {
                 },
                 onToggleEnabled: async (serverKey, enabled) => {
                   state.toolLibraryError = null;
-                  handleMcpToggle(state, serverKey, enabled);
+                  await handleMcpToggle(state, serverKey, enabled);
                   await onRefresh();
                 },
                 onEdit: (serverKey) => {
@@ -3585,7 +3583,8 @@ export function renderApp(state: AppViewState) {
               const snapMcp = snapCfg?.mcp as
                 | { servers?: Record<string, import("./views/mcp.ts").McpServerEntry> }
                 | undefined;
-              const entry = (mcp?.servers?.[sk] ?? snapMcp?.servers?.[sk] ?? {}) as import("./views/mcp.ts").McpServerEntry;
+              const rawEntry = (mcp?.servers?.[sk] ?? snapMcp?.servers?.[sk] ?? {}) as import("./views/mcp.ts").McpServerEntry;
+              const entry = resolveMcpServerEntryForUi(sk, rawEntry, state.configSnapshot);
               return renderMcpEditModal({
                 open: true,
                 serverKey: sk,

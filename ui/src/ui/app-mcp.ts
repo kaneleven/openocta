@@ -2,7 +2,55 @@ import type { AppViewState } from "./app-view-state.ts";
 import { loadConfig } from "./controllers/config.ts";
 import { saveConfigPatch } from "./controllers/config.ts";
 import { cloneConfigObject } from "./controllers/config/form-utils.ts";
+import type { ConfigSnapshot } from "./types.ts";
 import type { McpServerEntry } from "./views/mcp.ts";
+
+/**
+ * Go 序列化 `mcp.servers.*` 时 `enabled: false` 会因 omitempty 被省略，仅靠 `config.config`
+ * 无法区分「禁用」与「字段缺失」。快照中的 `parsed` 来自磁盘原始 JSON，保留 `enabled: false`。
+ */
+export function disabledMcpServerKeysFromSnapshot(
+  snapshot: Pick<ConfigSnapshot, "parsed" | "config"> | null | undefined,
+): Set<string> {
+  const out = new Set<string>();
+  const parsedRoot = snapshot?.parsed;
+  if (parsedRoot && typeof parsedRoot === "object" && !Array.isArray(parsedRoot)) {
+    const mcp = (parsedRoot as Record<string, unknown>).mcp as Record<string, unknown> | undefined;
+    const servers = mcp?.servers as Record<string, unknown> | undefined;
+    if (servers && typeof servers === "object") {
+      for (const [k, v] of Object.entries(servers)) {
+        if (!v || typeof v !== "object" || Array.isArray(v)) continue;
+        if ((v as Record<string, unknown>).enabled === false) out.add(k);
+      }
+    }
+  }
+  const cfgServers = (snapshot?.config as { mcp?: { servers?: Record<string, { enabled?: boolean }> } } | undefined)?.mcp
+    ?.servers;
+  if (cfgServers && typeof cfgServers === "object") {
+    for (const [k, v] of Object.entries(cfgServers)) {
+      if (v?.enabled === false) out.add(k);
+    }
+  }
+  return out;
+}
+
+/** 编辑弹框等 UI：当原始 JSON 含显式 `enabled` 时优先采用（修复 omitempty 导致的禁用状态丢失）。 */
+export function resolveMcpServerEntryForUi(
+  serverKey: string,
+  entry: McpServerEntry,
+  snapshot: Pick<ConfigSnapshot, "parsed"> | null | undefined,
+): McpServerEntry {
+  const parsedRoot = snapshot?.parsed;
+  if (parsedRoot && typeof parsedRoot === "object" && !Array.isArray(parsedRoot)) {
+    const mcp = (parsedRoot as Record<string, unknown>).mcp as Record<string, unknown> | undefined;
+    const servers = mcp?.servers as Record<string, unknown> | undefined;
+    const raw = servers?.[serverKey] as Record<string, unknown> | undefined;
+    if (raw && typeof raw === "object" && !Array.isArray(raw) && Object.prototype.hasOwnProperty.call(raw, "enabled")) {
+      return { ...entry, enabled: raw.enabled !== false };
+    }
+  }
+  return entry;
+}
 
 export function handleMcpRefresh(host: AppViewState) {
   loadConfig(host);
@@ -220,7 +268,7 @@ export function handleMcpEditConnectionTypeChange(host: AppViewState, type: "std
   host.mcpEditConnectionType = type;
 }
 
-export function handleMcpToggle(host: AppViewState, key: string, enabled: boolean) {
+export async function handleMcpToggle(host: AppViewState, key: string, enabled: boolean) {
   const base = cloneConfigObject(host.configForm ?? host.configSnapshot?.config ?? {});
   if (!base.mcp) {
     base.mcp = { servers: {} };
@@ -235,7 +283,7 @@ export function handleMcpToggle(host: AppViewState, key: string, enabled: boolea
   mcp.servers[key] = { ...mcp.servers[key], enabled };
   host.configForm = base;
   host.configFormDirty = true;
-  saveConfigPatch(host, { mcp: base.mcp });
+  await saveConfigPatch(host, { mcp: base.mcp });
 }
 
 export function handleMcpFormPatch(host: AppViewState, key: string, patch: Partial<McpServerEntry>) {
