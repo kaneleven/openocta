@@ -98,6 +98,29 @@ export function isCronRunSessionKey(sessionKey: string | undefined | null): bool
   return /^agent:[^:]+:cron:[^:]+:run:.+/i.test(raw);
 }
 
+/**
+ * 单次运行 session key → 定时任务持久会话 key（消息页 / 侧栏使用的 agent:{agentId}:cron:{jobId}）。
+ * 单次运行形如 agent:{agentId}:cron:{jobId}:run:{runSessionId}；若已是持久 key 则原样返回。
+ */
+export function cronJobSessionKeyFromRunSessionKey(sessionKey: string | undefined | null): string | null {
+  const raw = (sessionKey ?? "").trim();
+  if (!raw) {
+    return null;
+  }
+  const runMatch = /^agent:([^:]+):cron:([^:]+):run:.+$/i.exec(raw);
+  if (runMatch) {
+    return `agent:${runMatch[1]}:cron:${runMatch[2]}`;
+  }
+  if (/^agent:[^:]+:cron:[^:]+$/i.test(raw)) {
+    return raw;
+  }
+  const legacy = /^cron:([^:]+):run:/i.exec(raw);
+  if (legacy) {
+    return `agent:main:cron:${legacy[1]}`;
+  }
+  return null;
+}
+
 const THREAD_SESSION_MARKERS = [":thread:", ":topic:"];
 
 export function resolveThreadParentSessionKey(

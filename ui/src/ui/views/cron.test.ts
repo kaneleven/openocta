@@ -186,7 +186,7 @@ describe("cron view", () => {
     const link = container.querySelector("a.session-link");
     expect(link).not.toBeNull();
     expect(link?.getAttribute("href")).toContain(
-      "/ui/message?session=agent%3Amain%3Acron%3Ajob-1%3Arun%3Aabc",
+      "/ui/message?session=agent%3Amain%3Acron%3Ajob-1",
     );
   });
 

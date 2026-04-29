@@ -5,6 +5,7 @@ import { formatAgo, formatMs } from "../format.ts";
 import { icons } from "../icons.js";
 import { nativeConfirm } from "../native-dialog-bridge.ts";
 import { pathForTab } from "../navigation.ts";
+import { cronJobSessionKeyFromRunSessionKey } from "../sessions/session-key-utils.js";
 import {
   formatCronSchedule,
   formatNextRun,
@@ -762,11 +763,20 @@ function renderJobState(job: CronJob) {
   `;
 }
 
+function cronRunChatSessionKey(entry: CronRunLogEntry): string | null {
+  const fromKey = cronJobSessionKeyFromRunSessionKey(entry.sessionKey);
+  if (fromKey) {
+    return fromKey;
+  }
+  const jid = entry.jobId?.trim();
+  return jid ? `agent:main:cron:${jid}` : null;
+}
+
 function renderRun(entry: CronRunLogEntry, basePath: string) {
-  const chatUrl =
-    typeof entry.sessionKey === "string" && entry.sessionKey.trim().length > 0
-      ? `${pathForTab("message", basePath)}?session=${encodeURIComponent(entry.sessionKey)}`
-      : null;
+  const chatSessionKey = cronRunChatSessionKey(entry);
+  const chatUrl = chatSessionKey
+    ? `${pathForTab("message", basePath)}?session=${encodeURIComponent(chatSessionKey)}`
+    : null;
   return html`
     <div class="list-item">
       <div class="list-main">

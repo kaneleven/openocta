@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isCronRunSessionKey } from "./session-key-utils.js";
+import { cronJobSessionKeyFromRunSessionKey, isCronRunSessionKey } from "./session-key-utils.js";
 
 describe("isCronRunSessionKey", () => {
   it("matches current agent:cron:…:run:… keys", () => {
@@ -19,5 +19,28 @@ describe("isCronRunSessionKey", () => {
 
   it("does not confuse employee run keys", () => {
     expect(isCronRunSessionKey("agent:main:employee:e1:run:uuid")).toBe(false);
+  });
+});
+
+describe("cronJobSessionKeyFromRunSessionKey", () => {
+  it("strips :run:… from agent cron run keys", () => {
+    expect(cronJobSessionKeyFromRunSessionKey("agent:main:cron:job-1:run:abc")).toBe(
+      "agent:main:cron:job-1",
+    );
+    expect(
+      cronJobSessionKeyFromRunSessionKey(
+        "agent:main:cron:e11d9767-9b27-45bf-97ee-94339b6e0898:run:sess-id",
+      ),
+    ).toBe("agent:main:cron:e11d9767-9b27-45bf-97ee-94339b6e0898");
+  });
+
+  it("returns persistent cron keys unchanged", () => {
+    expect(cronJobSessionKeyFromRunSessionKey("agent:main:cron:e11d9767-9b27-45bf-97ee-94339b6e0898")).toBe(
+      "agent:main:cron:e11d9767-9b27-45bf-97ee-94339b6e0898",
+    );
+  });
+
+  it("normalizes legacy cron:job:run:…", () => {
+    expect(cronJobSessionKeyFromRunSessionKey("cron:j1:run:s1")).toBe("agent:main:cron:j1");
   });
 });
