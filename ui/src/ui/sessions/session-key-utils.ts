@@ -80,6 +80,24 @@ export function isStableEmployeeWebchatSessionKey(sessionKey: string | undefined
   return /^agent:[^:]+:employee:[^:]+$/i.test(raw);
 }
 
+/**
+ * Cron 单次运行会话 key。网关 sessions.list 有意不包含此类会话（见 handlers/sessions.go isCronRunSessionKey），
+ * 与「会话不存在」无关；用于 UI 协调逻辑时勿误判为已删除。
+ *
+ * - Current: agent:{agentId}:cron:{jobId}:run:{sessionId}
+ * - Legacy: cron:{jobId}:run:{sessionId}
+ */
+export function isCronRunSessionKey(sessionKey: string | undefined | null): boolean {
+  const raw = (sessionKey ?? "").trim();
+  if (!raw) {
+    return false;
+  }
+  if (/^cron:[^:]+:run:/i.test(raw)) {
+    return true;
+  }
+  return /^agent:[^:]+:cron:[^:]+:run:.+/i.test(raw);
+}
+
 const THREAD_SESSION_MARKERS = [":thread:", ":topic:"];
 
 export function resolveThreadParentSessionKey(

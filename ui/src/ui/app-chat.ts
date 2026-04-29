@@ -3,6 +3,7 @@ import type { GatewayHelloOk } from "./gateway.ts";
 import type { ChatAttachment, ChatQueueItem } from "./ui-types.ts";
 import {
   gatewaySessionKeysEqual,
+  isCronRunSessionKey,
   isEmployeeRunSessionKey,
   isStableEmployeeWebchatSessionKey,
   parseAgentSessionKey,
@@ -55,6 +56,10 @@ async function reconcileInvalidChatSessionFromList(host: OpenClawApp): Promise<b
     return false;
   }
   if (!inList && isStableEmployeeWebchatSessionKey(key)) {
+    return false;
+  }
+  // Cron 单次运行会话被服务端 sessions.list 刻意排除，仍可通过 chat.history 访问。
+  if (!inList && isCronRunSessionKey(key)) {
     return false;
   }
   if (rows.length === 0 && key === "agent.main.main") {
