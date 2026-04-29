@@ -223,6 +223,9 @@ export async function refreshActiveTab(host: SettingsHost) {
   if (host.tab === "skills") {
     await loadSkills(host as unknown as OpenClawApp);
   }
+  if (host.tab === "skillLibrary") {
+    await loadSkills(host as unknown as OpenClawApp);
+  }
   if (host.tab === "toolLibrary") {
     await loadConfig(host as unknown as Parameters<typeof loadConfig>[0]);
   }

@@ -1,6 +1,6 @@
 import { gatewayHttpBase } from "../gateway-url.ts";
 import type { GatewayBrowserClient } from "../gateway.ts";
-import type { SkillStatusReport } from "../types.ts";
+import type { SkillStatusEntry, SkillStatusReport } from "../types.ts";
 
 export type SkillsState = {
   client: GatewayBrowserClient | null;
@@ -51,24 +51,54 @@ function getErrorMessage(err: unknown) {
 }
 
 /**
- * Keys that identify disabled skills in the UI. Uses skillKey plus aliases (name, on-disk folder)
- * so cards keyed by market `folder` stay in sync when they differ from canonical skillKey.
+ * Find workspace skill entry for a marketplace/catalog `folder` id.
+ * Prefers skillKey match, then unique basename(baseDir), then unique name — avoids
+ * treating another skill's display name as a folder id (false "many cards disabled").
  */
-export function disabledSkillKeysFromReport(report: SkillStatusReport | null | undefined): Set<string> {
-  const set = new Set<string>();
-  const add = (s: string | undefined) => {
-    const t = (s ?? "").trim();
-    if (t) set.add(t);
-  };
-  for (const e of report?.skills ?? []) {
-    if (!e.disabled) continue;
-    add(e.skillKey);
-    add(e.name);
+export function findSkillEntryForMarketFolder(
+  report: SkillStatusReport | null | undefined,
+  folder: string,
+): SkillStatusEntry | undefined {
+  const f = folder.trim();
+  if (!f || !report?.skills?.length) return undefined;
+  const skills = report.skills;
+  const byKey = skills.find((e) => e.skillKey === f);
+  if (byKey) return byKey;
+  const baseMatches = skills.filter((e) => {
     const base = (e.baseDir ?? "").replace(/[/\\]+$/, "");
-    if (base) {
-      const seg = base.split(/[/\\]/).pop();
-      add(seg);
-    }
+    const seg = base.split(/[/\\]/).pop() ?? "";
+    return seg === f;
+  });
+  if (baseMatches.length === 1) return baseMatches[0];
+  const nameMatches = skills.filter((e) => e.name === f);
+  if (nameMatches.length === 1) return nameMatches[0];
+  return undefined;
+}
+
+export function resolveSkillKeyForMarketFolder(
+  report: SkillStatusReport | null | undefined,
+  folder: string,
+): string {
+  return findSkillEntryForMarketFolder(report, folder)?.skillKey ?? folder.trim();
+}
+
+export function isMarketSkillDisabled(
+  report: SkillStatusReport | null | undefined,
+  folder: string,
+): boolean {
+  return findSkillEntryForMarketFolder(report, folder)?.disabled ?? false;
+}
+
+/** Which catalog folders should render as disabled (cards keyed by `folder`). */
+export function disabledFoldersForMarketItems(
+  report: SkillStatusReport | null | undefined,
+  items: { folder?: string }[],
+): Set<string> {
+  const set = new Set<string>();
+  for (const it of items) {
+    const folder = (it.folder ?? "").trim();
+    if (!folder) continue;
+    if (isMarketSkillDisabled(report, folder)) set.add(folder);
   }
   return set;
 }
@@ -103,6 +133,7 @@ export function updateSkillEdit(state: SkillsState, skillKey: string, value: str
 
 export async function updateSkillEnabled(state: SkillsState, skillKey: string, enabled: boolean) {
   if (!state.client || !state.connected) {
+    state.skillsError = "无法连接网关，无法更新技能启用状态。请在 Overview 确认 Gateway 已连接。";
     return;
   }
   state.skillsBusyKey = skillKey;
@@ -232,6 +263,7 @@ export async function uploadSkill(
 
 export async function deleteSkill(state: SkillsState, skillKey: string): Promise<void> {
   if (!state.client || !state.connected) {
+    state.skillsError = "无法连接网关，无法删除技能。请在 Overview 确认 Gateway 已连接。";
     return;
   }
   state.skillsBusyKey = skillKey;

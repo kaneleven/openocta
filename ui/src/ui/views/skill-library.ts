@@ -1,4 +1,5 @@
 import { html, nothing, type TemplateResult } from "lit";
+import { repeat } from "lit/directives/repeat.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { icons } from "../icons.js";
 import { resolveLogoUrl, type SkillDetail, type SkillListItem } from "../controllers/remote-market.ts";
@@ -349,7 +350,7 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
     const okCategory =
       activeCategory === "__all__"
         ? true
-        : itemBelongsToCategory(it, props.selectedCategoryDescendants);
+        : itemBelongsToCategory(it, props.selectedCategoryDescendants ?? []);
     const okStatus =
       activeStatus === "__all__" ? true : (it.status ?? "").trim().toLowerCase() === activeStatus;
     return okCategory && okStatus;
@@ -420,28 +421,32 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
                         <div class="emp-installed-section">
                           <h3 class="emp-section__title">已安装 (${installedItems.length})</h3>
                           <div class="emp-grid emp-installed-grid">
-                            ${installedItems.map((it) => {
-                              const active = props.selectedFolder === it.folder;
-                              const disabled = props.disabledKeys?.has(it.folder) ?? false;
-                              const enabled = !disabled;
-                              const installing = props.installingFolder === it.folder;
-                              const tags = splitCsv(it.tags);
-                              const os = splitCsv(it.os);
-                              const status = statusLabel(it.status);
-                              return html`
-                                <div class="emp-card-wrap ${active ? "active" : ""} ${disabled ? "is-disabled" : ""}">
-                                  <div class="emp-card emp-card-btn" @click=${() => props.onSelect(it.folder)}>
-                                    ${renderSkillCardIcon(props.gatewayHost, it.logo_url, it.emoji)}
-                                    <div class="emp-card__actions">
-                                      ${renderSkillCardActions(props, it.folder, true, enabled, installing, it.categoryCn)}
+                            ${repeat(
+                              installedItems,
+                              (it) => it.folder,
+                              (it) => {
+                                const active = props.selectedFolder === it.folder;
+                                const disabled = props.disabledKeys?.has(it.folder) ?? false;
+                                const enabled = !disabled;
+                                const installing = props.installingFolder === it.folder;
+                                const tags = splitCsv(it.tags);
+                                const os = splitCsv(it.os);
+                                const status = statusLabel(it.status);
+                                return html`
+                                  <div class="emp-card-wrap ${active ? "active" : ""} ${disabled ? "is-disabled" : ""}">
+                                    <div class="emp-card emp-card-btn" @click=${() => props.onSelect(it.folder)}>
+                                      ${renderSkillCardIcon(props.gatewayHost, it.logo_url, it.emoji)}
+                                      <div class="emp-card__actions">
+                                        ${renderSkillCardActions(props, it.folder, true, enabled, installing, it.categoryCn)}
+                                      </div>
+                                      <h3 class="emp-card__title">${it.name || it.folder}</h3>
+                                      <p class="emp-card__desc">${it.description ?? it.folder ?? "暂无描述"}</p>
+                                      ${renderSkillMeta(tags, os, status, activeCategory)}
                                     </div>
-                                    <h3 class="emp-card__title">${it.name || it.folder}</h3>
-                                    <p class="emp-card__desc">${it.description ?? it.folder ?? "暂无描述"}</p>
-                                    ${renderSkillMeta(tags, os, status, activeCategory)}
                                   </div>
-                                </div>
-                              `;
-                            })}
+                                `;
+                              },
+                            )}
                           </div>
                         </div>
                       `;
@@ -456,39 +461,43 @@ export function renderSkillLibrary(props: SkillLibraryProps) {
                                     <h3 class="emp-section__title">${group.name}</h3>
                                   </div>
                                   <div class="emp-grid">
-                                    ${group.items.map((it) => {
-                                      const active = props.selectedFolder === it.folder;
-                                      const installed =
-                                        props.installedKeys && props.installedKeys.size > 0
-                                          ? props.installedKeys.has(it.folder)
-                                          : false;
-                                      const disabled = props.disabledKeys?.has(it.folder) ?? false;
-                                      const enabled = !disabled;
-                                      const installing = props.installingFolder === it.folder;
-                                      const tags = splitCsv(it.tags);
-                                      const os = splitCsv(it.os);
-                                      const status = statusLabel(it.status);
-                                      return html`
-                                        <div class="emp-card-wrap ${active ? "active" : ""} ${disabled ? "is-disabled" : ""}">
-                                          <div class="emp-card emp-card-btn" @click=${() => props.onSelect(it.folder)}>
-                                            ${renderSkillCardIcon(props.gatewayHost, it.logo_url, it.emoji)}
-                                            <div class="emp-card__actions">
-                                              ${renderSkillCardActions(
-                                                props,
-                                                it.folder,
-                                                installed,
-                                                enabled,
-                                                installing,
-                                                it.categoryCn,
-                                              )}
+                                    ${repeat(
+                                      group.items,
+                                      (it) => it.folder,
+                                      (it) => {
+                                        const active = props.selectedFolder === it.folder;
+                                        const installed =
+                                          props.installedKeys && props.installedKeys.size > 0
+                                            ? props.installedKeys.has(it.folder)
+                                            : false;
+                                        const disabled = props.disabledKeys?.has(it.folder) ?? false;
+                                        const enabled = !disabled;
+                                        const installing = props.installingFolder === it.folder;
+                                        const tags = splitCsv(it.tags);
+                                        const os = splitCsv(it.os);
+                                        const status = statusLabel(it.status);
+                                        return html`
+                                          <div class="emp-card-wrap ${active ? "active" : ""} ${disabled ? "is-disabled" : ""}">
+                                            <div class="emp-card emp-card-btn" @click=${() => props.onSelect(it.folder)}>
+                                              ${renderSkillCardIcon(props.gatewayHost, it.logo_url, it.emoji)}
+                                              <div class="emp-card__actions">
+                                                ${renderSkillCardActions(
+                                                  props,
+                                                  it.folder,
+                                                  installed,
+                                                  enabled,
+                                                  installing,
+                                                  it.categoryCn,
+                                                )}
+                                              </div>
+                                              <h3 class="emp-card__title">${it.name || it.folder}</h3>
+                                              <p class="emp-card__desc">${it.description ?? it.folder ?? "暂无描述"}</p>
+                                              ${renderSkillMeta(tags, os, status, activeCategory)}
                                             </div>
-                                            <h3 class="emp-card__title">${it.name || it.folder}</h3>
-                                            <p class="emp-card__desc">${it.description ?? it.folder ?? "暂无描述"}</p>
-                                            ${renderSkillMeta(tags, os, status, activeCategory)}
                                           </div>
-                                        </div>
-                                      `;
-                                    })}
+                                        `;
+                                      },
+                                    )}
                                   </div>
                                 </div>
                               `,

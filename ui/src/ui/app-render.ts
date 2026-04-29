@@ -44,7 +44,8 @@ import {
 } from "./controllers/sessions.ts";
 import {
   deleteSkill,
-  disabledSkillKeysFromReport,
+  disabledFoldersForMarketItems,
+  resolveSkillKeyForMarketFolder,
   loadSkillDoc,
   installSkill,
   loadSkills,
@@ -2083,6 +2084,7 @@ export function renderApp(state: AppViewState) {
                       { q: state.skillLibraryQuery, status },
                       { gatewayHost: state.settings?.gatewayUrl?.trim(), token: state.settings?.token?.trim() },
                     );
+                    await loadSkills(state);
                   } catch (err) {
                     state.skillLibraryError = (err as any)?.message ? String((err as any).message) : String(err);
                   } finally {
@@ -2111,7 +2113,7 @@ export function renderApp(state: AppViewState) {
                   ...(state.skillsReport?.skills ?? []).map((entry) => entry.skillKey),
                   ...(state.skillLibraryItems ?? []).filter((s) => s.installed).map((s) => s.folder),
                 ]),
-                disabledKeys: disabledSkillKeysFromReport(state.skillsReport),
+                disabledKeys: disabledFoldersForMarketItems(state.skillsReport, state.skillLibraryItems ?? []),
                 installingFolder: state.skillLibraryInstallingFolder,
                 onInstall: async (folder, category) => {
                   state.skillLibraryInstallingFolder = folder;
@@ -2138,7 +2140,7 @@ export function renderApp(state: AppViewState) {
                 },
                 onDelete: async (folder) => {
                   state.skillLibraryError = null;
-                  await deleteSkill(state, folder);
+                  await deleteSkill(state, resolveSkillKeyForMarketFolder(state.skillsReport, folder));
                   if (state.skillsError) {
                     state.skillLibraryError = state.skillsError;
                   } else {
@@ -2149,7 +2151,7 @@ export function renderApp(state: AppViewState) {
                 },
                 onToggleEnabled: async (folder, enabled) => {
                   state.skillLibraryError = null;
-                  await updateSkillEnabled(state, folder, enabled);
+                  await updateSkillEnabled(state, resolveSkillKeyForMarketFolder(state.skillsReport, folder), enabled);
                   if (state.skillsError) {
                     state.skillLibraryError = state.skillsError;
                   } else {
@@ -2261,7 +2263,7 @@ export function renderApp(state: AppViewState) {
                 skillEditSuccessMessage: state.skillLibraryEditSuccessMessage,
                 onSkillEditOpen: async (folder) => {
                   state.skillLibraryEditModalOpen = true;
-                  state.skillLibraryEditSkillKey = folder;
+                  state.skillLibraryEditSkillKey = resolveSkillKeyForMarketFolder(state.skillsReport, folder);
                   state.skillLibraryEditFiles = [];
                   state.skillLibraryEditSelectedFile = null;
                   state.skillLibraryEditContent = "";
